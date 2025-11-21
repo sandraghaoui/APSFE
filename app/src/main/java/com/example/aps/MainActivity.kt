@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -16,13 +17,16 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -43,7 +47,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-
+        // Edge-to-edge: allow content behind system bars
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
@@ -61,7 +65,8 @@ fun MyApp() {
         startDestination = "splash"
     ) {
         composable("splash") { SplashScreen(navController) }
-        composable("home") { HomeScreen() }
+        composable("home") { HomeScreen(navController) }
+        composable("login") { LoginScreen(navController) }
     }
 }
 
@@ -109,7 +114,7 @@ fun SplashScreen(navController: NavHostController) {
 }
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(navController: NavHostController) {
     val GreenLight = Color(0xFF85BCA5)
     val GreenTop = Color(0xFF354E44)
     val GreenBottom = Color(0xFF263931)
@@ -277,7 +282,7 @@ fun HomeScreen() {
                     Spacer(Modifier.height(24.dp))
 
                     Button(
-                        onClick = { /* TODO */ },
+                        onClick = { /* TODO: maybe go to sign up later */ },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(46.dp),
@@ -293,7 +298,7 @@ fun HomeScreen() {
                     Spacer(Modifier.height(12.dp))
 
                     OutlinedButton(
-                        onClick = { /* TODO */ },
+                        onClick = { navController.navigate("login") },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(46.dp),
@@ -337,6 +342,143 @@ fun HomeScreen() {
                 label = "Profile",
                 imageRes = R.drawable.ic_nav_profile
             )
+        }
+    }
+}
+
+@Composable
+fun LoginScreen(navController: NavHostController) {
+    val GreenLight = Color(0xFF85BCA5)
+    val background = Color(0xFFF6F7F8)
+
+    val email = remember { mutableStateOf("") }
+    val phone = remember { mutableStateOf("") }
+    val password = remember { mutableStateOf("") }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(background),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 48.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Log In To your Account",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(Modifier.height(42.dp))
+
+            // Email
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text("Your Email", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(7.dp))
+                OutlinedTextField(
+                    value = email.value,
+                    onValueChange = { email.value = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = {
+                        Text(
+                            text = "SariLakkis@gmail.com",
+                            color = Color(0xFFB8C2CC)
+                        )
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
+
+            Spacer(Modifier.height(28.dp))
+
+            // Phone
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text("Phone Number", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(7.dp))
+                OutlinedTextField(
+                    value = phone.value,
+                    onValueChange = { phone.value = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = {
+                        Text(
+                            text = "+93123135",
+                            color = Color(0xFFB8C2CC)
+                        )
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
+
+            Spacer(Modifier.height(28.dp))
+
+            // Password
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text("Password", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(7.dp))
+                OutlinedTextField(
+                    value = password.value,
+                    onValueChange = { password.value = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = {
+                        Text(
+                            text = "************",
+                            color = Color(0xFFB8C2CC)
+                        )
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
+
+            Spacer(Modifier.height(35.dp))
+
+            Button(
+                onClick = {
+
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(30.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = GreenLight,
+                    contentColor = Color.White
+                )
+            ) {
+                Text("Log in")
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "Don't have an account? ",
+                    fontSize = 13.sp,
+                    color = Color.Gray
+                )
+                Text(
+                    text = "Sign up!",
+                    fontSize = 13.sp,
+                    color = Color(0xFF3366FF),
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.clickable {
+                        // For now, just go back to home or later to a real sign-up screen
+                        navController.navigate("home") {
+                            popUpTo("home") { inclusive = true }
+                        }
+                    }
+                )
+            }
         }
     }
 }
