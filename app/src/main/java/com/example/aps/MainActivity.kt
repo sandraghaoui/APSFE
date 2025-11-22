@@ -47,7 +47,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Edge-to-edge: allow content behind system bars
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
@@ -67,6 +66,8 @@ fun MyApp() {
         composable("splash") { SplashScreen(navController) }
         composable("home") { HomeScreen(navController) }
         composable("login") { LoginScreen(navController) }
+        composable("admin") { AdminDashboardScreen(navController) }
+        composable("adminReservations") { AdminReservationsScreen(navController) }
     }
 }
 
@@ -130,7 +131,6 @@ fun HomeScreen(navController: NavHostController) {
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                // leave space so content isn't hidden behind bottom bar
                 .padding(bottom = bottomBarHeight)
         ) {
             // ---------- TOP HEADER (image + gradient) ----------
@@ -146,7 +146,6 @@ fun HomeScreen(navController: NavHostController) {
                     modifier = Modifier.fillMaxSize()
                 )
 
-                // Green overlay with transparency so image shows through
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -166,7 +165,6 @@ fun HomeScreen(navController: NavHostController) {
                     verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Logo in a circle
                     Box(
                         modifier = Modifier
                             .size(60.dp)
@@ -244,7 +242,27 @@ fun HomeScreen(navController: NavHostController) {
                 )
             }
 
-            Spacer(Modifier.height(40.dp))
+            Spacer(Modifier.height(24.dp))
+
+            // ---------- SMALL BUTTON TO ACCESS ADMIN ----------
+            OutlinedButton(
+                onClick = { navController.navigate("admin") },
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, Color(0xFF85BCA5)),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color(0xFF263931)
+                )
+            ) {
+                Text(
+                    text = "Admin dashboard (temp)",
+                    fontSize = 12.sp
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
 
             // ---------- BOTTOM BIG GRADIENT CARD ----------
             Box(
@@ -255,8 +273,8 @@ fun HomeScreen(navController: NavHostController) {
                     .background(
                         Brush.linearGradient(
                             colors = listOf(GreenLight, GreenBottom),
-                            start = Offset(0f, 0f),           // top-left
-                            end = Offset(1000f, 1000f)        // bottom-right
+                            start = Offset(0f, 0f),
+                            end = Offset(1000f, 1000f)
                         )
                     )
                     .padding(horizontal = 24.dp, vertical = 24.dp)
@@ -282,7 +300,7 @@ fun HomeScreen(navController: NavHostController) {
                     Spacer(Modifier.height(24.dp))
 
                     Button(
-                        onClick = { /* TODO: maybe go to sign up later */ },
+                        onClick = { /* TODO: sign up */ },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(46.dp),
@@ -315,7 +333,7 @@ fun HomeScreen(navController: NavHostController) {
             }
         }
 
-
+        // ---------- BOTTOM NAV ----------
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -440,9 +458,7 @@ fun LoginScreen(navController: NavHostController) {
             Spacer(Modifier.height(35.dp))
 
             Button(
-                onClick = {
-
-                },
+                onClick = { },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
@@ -472,12 +488,489 @@ fun LoginScreen(navController: NavHostController) {
                     color = Color(0xFF3366FF),
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.clickable {
-                        // For now, just go back to home or later to a real sign-up screen
                         navController.navigate("home") {
                             popUpTo("home") { inclusive = true }
                         }
                     }
                 )
+            }
+        }
+    }
+}
+
+// --------------------- ADMIN DASHBOARD -----------------------
+
+@Composable
+fun AdminDashboardScreen(navController: NavHostController) {
+    val background = Color(0xFFF6F7F8)
+    val GreenAccent = Color(0xFF85BCA5)
+    val bottomBarHeight = 60.dp
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(background)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+                .padding(top = 32.dp, bottom = bottomBarHeight + 8.dp)
+        ) {
+            // Top bar
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Samer's Parking",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Sunday, September 28, 2025",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                }
+
+                Text(
+                    text = "Back",
+                    fontSize = 12.sp,
+                    color = GreenAccent,
+                    modifier = Modifier.clickable {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            // First row cards
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                AdminStatCard(
+                    title = "Current\nOccupancy",
+                    mainValue = "247/300",
+                    subValue = "+12 from yesterday",
+                    subColor = Color(0xFF4CAF50),
+                    emoji = "🚗",
+                    modifier = Modifier.weight(1f)
+                )
+                AdminStatCard(
+                    title = "Active\nReservations",
+                    mainValue = "45",
+                    subValue = "+5 today",
+                    subColor = Color(0xFF4CAF50),
+                    emoji = "⏱️",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(Modifier.height(28.dp))
+
+            // Second row cards
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                AdminStatCard(
+                    title = "Daily\nRevenue",
+                    mainValue = "$2,450",
+                    subValue = "+8.5%",
+                    subColor = Color(0xFF4CAF50),
+                    emoji = "💵",
+                    modifier = Modifier.weight(1f)
+                )
+                AdminStatCard(
+                    title = "Total\nCustomers",
+                    mainValue = "892",
+                    subValue = "+23 this week",
+                    subColor = Color(0xFF4CAF50),
+                    emoji = "👥",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(Modifier.height(28.dp))
+
+            OccupancyChartCard()
+        }
+
+        // Bottom nav (admin area)
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(bottomBarHeight)
+                .background(Color.White)
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            BottomNavItem(
+                label = "Dashboard",
+                imageRes = R.drawable.ic_nav_loyalty,
+                selected = true,
+                onClick = { /* already here */ }
+            )
+            BottomNavItem(
+                label = "Reservations",
+                imageRes = R.drawable.ic_nav_time,
+                onClick = { navController.navigate("adminReservations") }
+            )
+            BottomNavItem(
+                label = "Finances",
+                imageRes = R.drawable.ic_nav_payments
+            )
+            BottomNavItem(
+                label = "Adjustments",
+                imageRes = R.drawable.ic_nav_adjustments
+            )
+        }
+    }
+}
+
+// --------------------- ADMIN RESERVATIONS --------------------
+
+data class Reservation(
+    val plate: String,
+    val status: String,
+    val statusColor: Color,
+    val price: String,
+    val customerName: String,
+    val spot: String,
+    val timeRange: String
+)
+
+@Composable
+fun AdminReservationsScreen(navController: NavHostController) {
+    val background = Color(0xFFF6F7F8)
+    val bottomBarHeight = 60.dp
+
+    val reservations = listOf(
+        Reservation(
+            plate = "A46123",
+            status = "active",
+            statusColor = Color(0xFF16C172),
+            price = "$12",
+            customerName = "Sandra Ghaoui",
+            spot = "A-15",
+            timeRange = "09:00 - 17:00"
+        ),
+        Reservation(
+            plate = "X22789",
+            status = "active",
+            statusColor = Color(0xFF16C172),
+            price = "$5",
+            customerName = "Taylor Swift",
+            spot = "B-22",
+            timeRange = "10:30 - 14:30"
+        ),
+        Reservation(
+            plate = "D15456",
+            status = "upcoming",
+            statusColor = Color(0xFF246BFD),
+            price = "$10",
+            customerName = "Lebron James",
+            spot = "C-08",
+            timeRange = "14:00 - 18:00"
+        ),
+        Reservation(
+            plate = "G00789",
+            status = "active",
+            statusColor = Color(0xFF16C172),
+            price = "$8",
+            customerName = "Lionel Messi",
+            spot = "A-03",
+            timeRange = "11:00 - 15:00"
+        )
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(background)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+                .padding(top = 32.dp, bottom = bottomBarHeight + 8.dp)
+        ) {
+            Text(
+                text = "Active Reservations",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            reservations.forEach { res ->
+                ReservationCard(reservation = res)
+                Spacer(Modifier.height(12.dp))
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(bottomBarHeight)
+                .background(Color.White)
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            BottomNavItem(
+                label = "Dashboard",
+                imageRes = R.drawable.ic_nav_loyalty,
+                onClick = { navController.navigate("admin") }
+            )
+            BottomNavItem(
+                label = "Reservations",
+                imageRes = R.drawable.ic_nav_time,
+                selected = true,
+                onClick = { /* already here */ }
+            )
+            BottomNavItem(
+                label = "Finances",
+                imageRes = R.drawable.ic_nav_payments
+            )
+            BottomNavItem(
+                label = "Adjustments",
+                imageRes = R.drawable.ic_nav_adjustments
+            )
+        }
+    }
+}
+
+@Composable
+fun ReservationCard(reservation: Reservation) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(170.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // TOP PART (plate + status + price + name)
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(26.dp)
+                                .background(Color(0xFFF2F5F7), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("🚗", fontSize = 16.sp)
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = reservation.plate,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(reservation.statusColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = reservation.status,
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(
+                                    horizontal = 8.dp,
+                                    vertical = 2.dp
+                                )
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = reservation.price,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                Text(
+                    text = reservation.customerName,
+                    fontSize = 17.sp
+                )
+            }
+
+            // BOTTOM ROW — ALWAYS AT BOTTOM
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Spot: ${reservation.spot}",
+                    fontSize = 15.sp
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("⏱️", fontSize = 15.sp)
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = reservation.timeRange,
+                        fontSize = 15.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+// --------------------- OTHER REUSABLE COMPONENTS -------------------
+
+@Composable
+fun AdminStatCard(
+    title: String,
+    mainValue: String,
+    subValue: String,
+    subColor: Color,
+    emoji: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.height(180.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = title,
+                        fontSize = 20.sp,
+                        color = Color.Gray,
+                        lineHeight = 16.sp
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = mainValue,
+                        fontSize = 29.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .background(Color(0xFFF2F5F7), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = emoji, fontSize = 24.sp)
+                }
+            }
+
+            Text(
+                text = subValue,
+                fontSize = 15.sp,
+                color = subColor
+            )
+        }
+    }
+}
+
+@Composable
+fun OccupancyChartCard() {
+    val cardHeight = 280.dp
+    val barMaxHeight = 140.dp
+
+    val hours = listOf("6AM", "8AM", "10AM", "12PM", "2PM", "4PM", "6PM", "8PM")
+    val values = listOf(20, 70, 140, 210, 260, 230, 150, 80)
+    val maxValue = values.maxOrNull() ?: 1
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(cardHeight),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+        ) {
+            Text(
+                text = "Today's Occupancy",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(barMaxHeight),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                values.forEach { v ->
+                    val ratio = v.toFloat() / maxValue.toFloat()
+                    Box(
+                        modifier = Modifier
+                            .width(16.dp)
+                            .height(barMaxHeight * ratio)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFF85BCA5).copy(alpha = 0.7f))
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                hours.forEach { h ->
+                    Text(
+                        text = h,
+                        fontSize = 10.sp,
+                        color = Color.Gray
+                    )
+                }
             }
         }
     }
@@ -522,9 +1015,16 @@ fun FeatureCard(
 fun BottomNavItem(
     label: String,
     imageRes: Int,
-    selected: Boolean = false
+    selected: Boolean = false,
+    onClick: (() -> Unit)? = null
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clickable(enabled = onClick != null) {
+                onClick?.invoke()
+            }
+    ) {
         Image(
             painter = painterResource(id = imageRes),
             contentDescription = label,
