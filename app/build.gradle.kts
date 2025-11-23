@@ -56,6 +56,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.9.6")
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.18.0")
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.ui.graphics)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

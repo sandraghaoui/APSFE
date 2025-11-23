@@ -3,6 +3,7 @@ package com.example.aps.ui.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -261,19 +262,23 @@ fun HomeScreen(navController: NavController) {
             BottomNavItem(
                 label = "Home",
                 imageRes = R.drawable.ic_nav_home,
-                selected = true
+                selected = true,
+                onClick = { navController.navigate("home") }
             )
             BottomNavItem(
                 label = "Payments",
-                imageRes = R.drawable.ic_nav_payments
+                imageRes = R.drawable.ic_nav_payments,
+                onClick = {/* TO DO */}
             )
             BottomNavItem(
                 label = "Loyalty",
-                imageRes = R.drawable.ic_nav_loyalty
+                imageRes = R.drawable.ic_nav_loyalty,
+                onClick = {navController.navigate("loyalty")}
             )
             BottomNavItem(
                 label = "Profile",
-                imageRes = R.drawable.ic_nav_profile
+                imageRes = R.drawable.ic_nav_profile,
+                onClick = {/* TO DO */}
             )
         }
     }
@@ -318,9 +323,13 @@ fun FeatureCard(
 fun BottomNavItem(
     label: String,
     imageRes: Int,
-    selected: Boolean = false
+    selected: Boolean = false,
+    onClick: () -> Unit
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable{ onClick() }
+    ) {
         Image(
             painter = painterResource(id = imageRes),
             contentDescription = label,
@@ -336,3 +345,4 @@ fun BottomNavItem(
         )
     }
 }
+
