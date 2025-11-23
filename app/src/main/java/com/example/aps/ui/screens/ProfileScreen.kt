@@ -162,13 +162,17 @@ fun ProfileScreen(navController: NavController) {
                 navController.navigate("home")
             }
 
-            BottomNavItem("Payments", R.drawable.ic_nav_payments) {}
+            BottomNavItem("Payments", R.drawable.ic_nav_payments) {
+                navController.navigate("purchase_history")
+            }
 
             BottomNavItem("Loyalty", R.drawable.ic_nav_loyalty) {
                 navController.navigate("loyalty")
             }
 
-            BottomNavItem("Profile", R.drawable.ic_nav_profile, selected = true) {}
+            BottomNavItem("Profile", R.drawable.ic_nav_profile, selected = true) {
+                navController.navigate("profile")
+            }
         }
     }
 }

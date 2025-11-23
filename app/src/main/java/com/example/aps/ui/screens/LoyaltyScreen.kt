@@ -244,17 +244,17 @@ fun LoyaltyScreen(navController: NavController) {
             BottomNavItem(
                 label = "Payments",
                 imageRes = R.drawable.ic_nav_payments,
-                onClick = {/* TO DO */}
+                onClick = { navController.navigate("purchase_history") }
             )
             BottomNavItem(
                 label = "Loyalty",
                 imageRes = R.drawable.ic_nav_loyalty,
-                onClick = {navController.navigate("loyalty")}
+                onClick = { navController.navigate("loyalty") }
             )
             BottomNavItem(
                 label = "Profile",
                 imageRes = R.drawable.ic_nav_profile,
-                onClick = {navController.navigate("profile")}
+                onClick = { navController.navigate("profile") }
             )
         }
     }
