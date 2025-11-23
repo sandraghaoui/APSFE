@@ -12,6 +12,7 @@ import com.example.aps.ui.screens.AdminDashboard
 import com.example.aps.ui.screens.HomeScreen
 import com.example.aps.ui.screens.LoginScreen
 import com.example.aps.ui.screens.LoyaltyScreen
+import com.example.aps.ui.screens.ProfileScreen
 import com.example.aps.ui.screens.SignUpScreen
 import com.example.aps.ui.screens.SplashScreen
 
@@ -41,5 +42,6 @@ fun MyApp() {
         composable("login") { LoginScreen(navController) }
         composable("admin") { AdminDashboard(navController) }
         composable("loyalty") { LoyaltyScreen(navController) }
+        composable("profile") { ProfileScreen(navController) }
     }
 }

@@ -254,7 +254,7 @@ fun LoyaltyScreen(navController: NavController) {
             BottomNavItem(
                 label = "Profile",
                 imageRes = R.drawable.ic_nav_profile,
-                onClick = {/* TO DO */}
+                onClick = {navController.navigate("profile")}
             )
         }
     }
