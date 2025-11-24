@@ -4,6 +4,9 @@ import ai.onnxruntime.OnnxTensor;
 import ai.onnxruntime.OrtEnvironment;
 import ai.onnxruntime.OrtException;
 import ai.onnxruntime.OrtSession;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
@@ -379,22 +382,33 @@ public class CameraActivity extends AppCompatActivity {
         InputImage image = InputImage.fromBitmap(plateCrop, 0);
 
         recognizer.process(image)
-                .addOnSuccessListener(new OnSuccessListener<Text>() {
-                    @Override
-                    public void onSuccess(Text visionText) {
-                        String text = visionText.getText();
-                        Log.d("OCR", "Detected text: " + text);
-                        Toast.makeText(getApplicationContext(), text, Toast.LENGTH_SHORT).show();
+                .addOnSuccessListener(visionText -> {
+                    String raw = visionText.getText();
+                    Log.d("OCR", "Raw OCR text: " + raw);
+
+                    // Force valid plate: Letter + uninterrupted digits
+                    String plate = normalizePlateFormat(raw);
+                    Log.d("OCR", "Normalized plate: " + plate);
+
+                    if (plate == null || plate.isEmpty()) {
+                        // No valid plate in required format → ignore
+                        return;
                     }
+
+                    // At this point, plate is ALWAYS like "B123456"
+                    Toast.makeText(getApplicationContext(), plate, Toast.LENGTH_SHORT).show();
+
+                    // If you want to extract letter/digits separately:
+                    // char letter = plate.charAt(0);
+                    // int number = Integer.parseInt(plate.substring(1));
+
                 })
-                .addOnFailureListener(
-                        new OnFailureListener() {
-                            @Override
-                            public void onFailure(@NonNull Exception e) {
-                                Log.e("OCR", "Failed", e);
-                            }
-                        });
+                .addOnFailureListener(e -> {
+                    Log.e("OCR", "Failed", e);
+                });
     }
+
+
 
     @Override
     protected void onDestroy() {
@@ -404,5 +418,49 @@ public class CameraActivity extends AppCompatActivity {
             if (ortEnv != null) ortEnv.close();
         } catch (Exception ignored) {
         }
+    }
+    // Returns true if the string contains any Arabic-style digits
+    private boolean containsArabicDigits(String text) {
+        if (text == null) return false;
+
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+
+            // Arabic-Indic digits: ٠١٢٣٤٥٦٧٨٩
+            if (c >= '\u0660' && c <= '\u0669') {
+                return true;
+            }
+            // Eastern Arabic-Indic digits: ۰۱۲۳۴۵۶۷۸۹
+            if (c >= '\u06F0' && c <= '\u06F9') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String normalizePlateFormat(String rawText) {
+        if (rawText == null) return null;
+
+        // 1) Uppercase everything to simplify
+        String upper = rawText.toUpperCase(Locale.US);
+
+        // 2) Remove everything that is not A-Z or 0-9
+        //    This strips Arabic letters, punctuation, etc.
+        String cleaned = upper.replaceAll("[^A-Z0-9]", "");
+        // Now cleaned is something like "B1234", "ABC1234", "B١٢٣٤"->"B"
+
+        // 3) We only accept patterns: ONE letter + one or more digits
+        //    We scan the whole string looking for the first match
+        Pattern pattern = Pattern.compile("([A-Z])(\\d+)");
+        Matcher matcher = pattern.matcher(cleaned);
+
+        if (matcher.find()) {
+            String letter = matcher.group(1); // the A–Z
+            String digits = matcher.group(2); // the [0-9]+
+            return letter + digits;           // e.g. "B123456"
+        }
+
+        // No valid plate found
+        return null;
     }
 }

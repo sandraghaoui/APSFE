@@ -1,29 +1,16 @@
 package com.example.aps.ui.screens
 
+import android.content.Intent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,35 +20,39 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.aps.CameraActivity
 import com.example.aps.R
 
 @Composable
 fun HomeScreen(navController: NavController) {
+
     val GreenLight = Color(0xFF85BCA5)
     val GreenTop = Color(0xFF354E44)
     val GreenBottom = Color(0xFF263931)
     val bottomBarHeight = 60.dp
+
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF6F7F8))
     ) {
-        // ---------- SCROLLABLE CONTENT ----------
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                // leave space so content isn't hidden behind bottom bar
                 .padding(bottom = bottomBarHeight)
         ) {
-            // ---------- TOP HEADER (image + gradient) ----------
+
+            // ---------------- HEADER ----------------
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -74,7 +65,6 @@ fun HomeScreen(navController: NavController) {
                     modifier = Modifier.fillMaxSize()
                 )
 
-                // Green overlay with transparency so image shows through
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -89,12 +79,10 @@ fun HomeScreen(navController: NavController) {
                 )
 
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize(),
+                    modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Logo in a circle
                     Box(
                         modifier = Modifier
                             .size(60.dp)
@@ -114,6 +102,7 @@ fun HomeScreen(navController: NavController) {
                         fontSize = 26.sp,
                         fontWeight = FontWeight.Bold
                     )
+
                     Text(
                         text = "Automated Parking System",
                         color = Color(0xFFE5F4EF),
@@ -124,7 +113,7 @@ fun HomeScreen(navController: NavController) {
 
             Spacer(Modifier.height(24.dp))
 
-            // ---------- MIDDLE TEXT ----------
+            // ---------------- SUBTITLE ----------------
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -148,7 +137,7 @@ fun HomeScreen(navController: NavController) {
 
             Spacer(Modifier.height(34.dp))
 
-            // ---------- 3 FEATURE CARDS ----------
+            // ---------------- FEATURE CARDS ----------------
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -174,7 +163,7 @@ fun HomeScreen(navController: NavController) {
 
             Spacer(Modifier.height(40.dp))
 
-            // ---------- BOTTOM BIG GRADIENT CARD ----------
+            // ---------------- BIG CARD ----------------
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -183,23 +172,27 @@ fun HomeScreen(navController: NavController) {
                     .background(
                         Brush.linearGradient(
                             colors = listOf(GreenLight, GreenBottom),
-                            start = Offset(0f, 0f),           // top-left
-                            end = Offset(1000f, 1000f)        // bottom-right
+                            start = Offset(0f, 0f),
+                            end = Offset(1000f, 1000f)
                         )
                     )
                     .padding(horizontal = 24.dp, vertical = 24.dp)
             ) {
+
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
                 ) {
+
                     Text(
                         text = "Get Started Today",
                         color = Color.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold
                     )
+
                     Spacer(Modifier.height(4.dp))
+
                     Text(
                         text = "Join thousands of happy parkers and\nstart earning rewards",
                         color = Color(0xFFE5F4EF),
@@ -233,7 +226,6 @@ fun HomeScreen(navController: NavController) {
                         shape = RoundedCornerShape(50),
                         border = BorderStroke(1.dp, Color(0x66FFFFFF)),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = Color.Transparent,
                             contentColor = Color.White
                         )
                     ) {
@@ -245,11 +237,31 @@ fun HomeScreen(navController: NavController) {
                     Button(onClick = { navController.navigate("admin") }) {
                         Text("Admin Dashboard")
                     }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // ---------------- OPEN CAMERA BUTTON (NEW) ----------------
+                    Button(
+                        onClick = {
+                            val intent = Intent(context, CameraActivity::class.java)
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(46.dp),
+                        shape = RoundedCornerShape(50),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF85BCA5),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("Open Camera")
+                    }
                 }
             }
         }
 
-
+        // ---------------- BOTTOM NAV ----------------
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -291,8 +303,7 @@ fun FeatureCard(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier
-            .height(140.dp),
+        modifier = modifier.height(140.dp),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -306,8 +317,7 @@ fun FeatureCard(
             Image(
                 painter = painterResource(id = imageRes),
                 contentDescription = title,
-                modifier = Modifier
-                    .size(56.dp)
+                modifier = Modifier.size(56.dp)
             )
             Spacer(Modifier.height(6.dp))
             Text(
@@ -328,7 +338,7 @@ fun BottomNavItem(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable{ onClick() }
+        modifier = Modifier.clickable { onClick() }
     ) {
         Image(
             painter = painterResource(id = imageRes),
@@ -345,4 +355,3 @@ fun BottomNavItem(
         )
     }
 }
-
