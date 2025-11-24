@@ -425,11 +425,14 @@ fun SignUpScreen(navController: NavHostController) {
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(58.dp)
+                    .height(58.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF85BCA5))
             ) {
                 Text(
                     text = "Create Account",
                     fontSize = 16.sp,
+                    color = Color.White,
                     fontWeight = FontWeight.Bold
                 )
             }

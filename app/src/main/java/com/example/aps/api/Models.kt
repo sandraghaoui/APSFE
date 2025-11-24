@@ -25,20 +25,21 @@ data class UserRead(
 // PEOPLE
 // ---------------------
 data class PeopleBase(
-    val plate_number: Int?,
+    val plate_number: Int,
     val loyalty_points: Int = 0,
     val balance: Double = 0.0
 )
 
 data class PeopleCreate(
-    val plate_number: Int?,
+    val plate_number: Int,
     val loyalty_points: Int = 0,
     val balance: Double = 0.0
+    // uuid comes from JWT token
 )
 
 data class PeopleRead(
     val uuid: String,
-    val plate_number: Int?,
+    val plate_number: Int,
     val loyalty_points: Int,
     val balance: Double
 )
@@ -47,8 +48,10 @@ data class PeopleRead(
 // ---------------------
 // ADMINS
 // ---------------------
+// Backend AdminCreate is empty (UUID from token)
+// We can omit body or send empty object
 data class AdminCreate(
-    val uuid: String
+    val dummy: String? = null  // Optional, not used by backend
 )
 
 data class AdminRead(
@@ -61,13 +64,13 @@ data class AdminRead(
 // ---------------------
 data class ParkingCreate(
     val name: String,
-    val owner_uuid: String,
     val current_capacity: Int = 0,
     val maximum_capacity: Int,
     val price_per_hour: Double,
-    val open_time: String,   // ISO datetime string
-    val close_time: String,
+    val open_time: String,   // ISO datetime: "2025-11-24T10:00:00"
+    val close_time: String,  // ISO datetime: "2025-11-24T22:00:00"
     val location: String
+    // owner_uuid auto-filled by backend from token
 )
 
 data class ParkingRead(
@@ -76,7 +79,7 @@ data class ParkingRead(
     val current_capacity: Int,
     val maximum_capacity: Int,
     val price_per_hour: Double,
-    val open_time: String,
+    val open_time: String,   // Backend sends datetime, will be string
     val close_time: String,
     val location: String
 )
@@ -87,18 +90,18 @@ data class ParkingRead(
 // ---------------------
 data class ReservationCreate(
     val parking_id: String,
-    val people_uuid: String,
-    val time: String,
+    val time: String,  // ISO datetime: "2025-11-24T10:00:00"
     val status: String = "Pending",
-    val checkout_time: String? = null,
+    val checkout_time: String? = null,  // ISO datetime or null
     val price: Double = 0.0
+    // people_uuid auto-filled by backend from token
 )
 
 data class ReservationRead(
-    val id: Int,
+    val id: Int,  // Backend uses "id" not "reservation_id"
     val parking_id: String,
     val people_uuid: String,
-    val time: String,
+    val time: String,  // Backend sends datetime as string
     val status: String,
     val checkout_time: String?,
     val price: Double
@@ -109,7 +112,8 @@ data class ReservationRead(
 // REVENUES
 // ---------------------
 data class RevenueBase(
-    val revenue: Double = 0.0,
+    val date: String,  // ISO date: "2025-11-24"
+    val revenue: Double = 0.0,  // Backend uses "revenue" not "amount"
     val parking_id: String
 )
 

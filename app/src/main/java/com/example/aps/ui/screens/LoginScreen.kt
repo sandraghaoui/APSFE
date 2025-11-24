@@ -174,7 +174,7 @@ fun LoginScreen(navController: NavController) {
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF85BCA5))
         ) {
-            Text("Log In", fontSize = 16.sp, color = Color.White)
+            Text("Log In", fontSize = 16.sp, color = Color.White, fontWeight = FontWeight.Bold)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
