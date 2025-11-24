@@ -219,9 +219,6 @@ fun LoyaltyScreen(navController: NavController) {
                 onRedeem = { /* TODO */ }
             )
 
-
-
-
             Spacer(Modifier.height(90.dp))
         }
 
@@ -238,7 +235,6 @@ fun LoyaltyScreen(navController: NavController) {
             BottomNavItem(
                 label = "Home",
                 imageRes = R.drawable.ic_nav_home,
-                selected = true,
                 onClick = { navController.navigate("home") }
             )
             BottomNavItem(
@@ -249,6 +245,7 @@ fun LoyaltyScreen(navController: NavController) {
             BottomNavItem(
                 label = "Loyalty",
                 imageRes = R.drawable.ic_nav_loyalty,
+                selected = true,
                 onClick = { navController.navigate("loyalty") }
             )
             BottomNavItem(
