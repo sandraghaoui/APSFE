@@ -1,8 +1,11 @@
 package com.example.aps.api
+import kotlinx.serialization.Serializable
+
 
 // ---------------------
 // USERS
 // ---------------------
+@Serializable
 data class UserCreate(
     val first_name: String,
     val last_name: String,
@@ -10,7 +13,7 @@ data class UserCreate(
     val email: String,
     val admin: Boolean = false
 )
-
+@Serializable
 data class UserRead(
     val uuid: String,
     val first_name: String,
@@ -24,19 +27,20 @@ data class UserRead(
 // ---------------------
 // PEOPLE
 // ---------------------
+@Serializable
 data class PeopleBase(
     val plate_number: Int,
     val loyalty_points: Int = 0,
     val balance: Double = 0.0
 )
-
+@Serializable
 data class PeopleCreate(
     val plate_number: Int,
     val loyalty_points: Int = 0,
     val balance: Double = 0.0
     // uuid comes from JWT token
 )
-
+@Serializable
 data class PeopleRead(
     val uuid: String,
     val plate_number: Int,
@@ -50,10 +54,11 @@ data class PeopleRead(
 // ---------------------
 // Backend AdminCreate is empty (UUID from token)
 // We can omit body or send empty object
+@Serializable
 data class AdminCreate(
     val dummy: String? = null  // Optional, not used by backend
 )
-
+@Serializable
 data class AdminRead(
     val uuid: String
 )
@@ -62,6 +67,7 @@ data class AdminRead(
 // ---------------------
 // PARKING
 // ---------------------
+@Serializable
 data class ParkingCreate(
     val name: String,
     val current_capacity: Int = 0,
@@ -72,7 +78,7 @@ data class ParkingCreate(
     val location: String
     // owner_uuid auto-filled by backend from token
 )
-
+@Serializable
 data class ParkingRead(
     val name: String,
     val owner_uuid: String,
@@ -88,6 +94,7 @@ data class ParkingRead(
 // ---------------------
 // RESERVATION
 // ---------------------
+@Serializable
 data class ReservationCreate(
     val parking_id: String,
     val time: String,  // ISO datetime: "2025-11-24T10:00:00"
@@ -96,7 +103,7 @@ data class ReservationCreate(
     val price: Double = 0.0
     // people_uuid auto-filled by backend from token
 )
-
+@Serializable
 data class ReservationRead(
     val id: Int,  // Backend uses "id" not "reservation_id"
     val parking_id: String,
@@ -111,18 +118,19 @@ data class ReservationRead(
 // ---------------------
 // REVENUES
 // ---------------------
+@Serializable
 data class RevenueBase(
     val date: String,  // ISO date: "2025-11-24"
     val revenue: Double = 0.0,  // Backend uses "revenue" not "amount"
     val parking_id: String
 )
-
+@Serializable
 data class RevenueCreate(
     val date: String,
     val revenue: Double = 0.0,
     val parking_id: String
 )
-
+@Serializable
 data class RevenueRead(
     val date: String,
     val revenue: Double,

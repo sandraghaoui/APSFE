@@ -49,30 +49,30 @@ fun LoyaltyScreen(
     val uiState by viewModel.state.collectAsState()
     val bottomBarHeight = 60.dp
 
-    // Loading state
-    if (uiState.isLoading) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFF6F7F8)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("Loading loyalty data...")
+    when {
+        uiState.isLoading -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFFF6F7F8)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Loading loyalty data...")
+            }
+            return
         }
-        return
-    }
 
-    // Admins do not have loyalty accounts
-    if (uiState.isAdmin) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFF6F7F8)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("Admins do not have loyalty points.")
+        uiState.error != null -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFFF6F7F8)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Error loading loyalty: ${uiState.error}")
+            }
+            return
         }
-        return
     }
 
     val currentPoints = uiState.points
@@ -112,8 +112,8 @@ fun LoyaltyScreen(
                         .background(
                             brush = Brush.horizontalGradient(
                                 colors = listOf(
-                                    Color(0xFF9FD9C1), // Light green (left)
-                                    Color(0xFF30493F)  // Dark green (right)
+                                    Color(0xFF9FD9C1),
+                                    Color(0xFF30493F)
                                 )
                             )
                         )
@@ -292,7 +292,6 @@ fun LoyaltyScreen(
         }
     }
 }
-
 @Composable
 fun EarnRow(title: String, pts: String) {
     Row(
@@ -420,3 +419,4 @@ fun RewardCard(
         }
     }
 }
+
