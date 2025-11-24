@@ -18,6 +18,9 @@ import com.example.aps.ui.screens.ProfileScreen
 import com.example.aps.ui.screens.PurchaseHistoryScreen
 import com.example.aps.ui.screens.SignUpScreen
 import com.example.aps.ui.screens.SplashScreen
+import com.example.aps.ui.screens.AdminSettingsScreen
+import com.example.aps.ui.screens.FinancialReportsScreen
+import com.example.aps.ui.screens.AdminReservationsScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,6 +47,9 @@ fun MyApp() {
         composable("signup") { SignUpScreen(navController) }
         composable("login") { LoginScreen(navController) }
         composable("admin") { AdminDashboard(navController) }
+        composable("admin_reservations") { AdminReservationsScreen(navController) }
+        composable("admin_settings") { AdminSettingsScreen(navController) }
+        composable("financial_reports") { FinancialReportsScreen(navController) }
         composable("loyalty") { LoyaltyScreen(navController) }
         composable("profile") { ProfileScreen(navController) }
         composable("purchase_history") { PurchaseHistoryScreen(navController) }
