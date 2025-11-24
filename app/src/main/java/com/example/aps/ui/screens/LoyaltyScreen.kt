@@ -19,14 +19,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -36,15 +36,49 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.aps.R
+import com.example.aps.viewmodel.LoyaltyViewModel
 
 @Composable
-fun LoyaltyScreen(navController: NavController) {
-    val GreenLight = Color(0xFF85BCA5)
-    val GreenDark = Color(0xFF2F4A3F)
+fun LoyaltyScreen(
+    navController: NavController,
+    viewModel: LoyaltyViewModel = viewModel()
+) {
+    val uiState by viewModel.state.collectAsState()
     val bottomBarHeight = 60.dp
 
+    // Loading state
+    if (uiState.isLoading) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFF6F7F8)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Loading loyalty data...")
+        }
+        return
+    }
+
+    // Admins do not have loyalty accounts
+    if (uiState.isAdmin) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFF6F7F8)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Admins do not have loyalty points.")
+        }
+        return
+    }
+
+    val currentPoints = uiState.points
+    val goalPoints = 500
+    val remaining = (goalPoints - currentPoints).coerceAtLeast(0)
+    val progress = (currentPoints.toFloat() / goalPoints).coerceIn(0f, 1f)
 
     Box(
         modifier = Modifier
@@ -68,7 +102,7 @@ fun LoyaltyScreen(navController: NavController) {
                     .padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color.Transparent // Make the card itself transparent
+                    containerColor = Color.Transparent
                 ),
                 elevation = CardDefaults.cardElevation(4.dp)
             ) {
@@ -100,9 +134,9 @@ fun LoyaltyScreen(navController: NavController) {
                                     fontSize = 14.sp
                                 )
 
-                                Row(verticalAlignment = Alignment.Bottom){
+                                Row(verticalAlignment = Alignment.Bottom) {
                                     Text(
-                                        text = "485",
+                                        text = currentPoints.toString(),
                                         color = Color.White,
                                         fontSize = 36.sp,
                                         fontWeight = FontWeight.Bold
@@ -119,7 +153,7 @@ fun LoyaltyScreen(navController: NavController) {
                             Box(
                                 modifier = Modifier
                                     .size(42.dp)
-                                    .clip(RoundedCornerShape(44739200.dp))
+                                    .clip(RoundedCornerShape(50))
                                     .background(Color.White.copy(alpha = 0.2f)),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -134,7 +168,7 @@ fun LoyaltyScreen(navController: NavController) {
                         Spacer(modifier = Modifier.height(24.dp))
 
                         Text(
-                            text = "Progress to Full Day Free Parking   15 pts left",
+                            text = "Progress to Full Day Free Parking   $remaining pts left",
                             color = Color.White.copy(alpha = 0.9f),
                             fontSize = 12.sp
                         )
@@ -151,7 +185,7 @@ fun LoyaltyScreen(navController: NavController) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxHeight()
-                                    .fillMaxWidth(0.9f)
+                                    .fillMaxWidth(progress)
                                     .clip(RoundedCornerShape(4.dp))
                                     .background(Color(0xFF85BCA5))
                             )
@@ -160,16 +194,13 @@ fun LoyaltyScreen(navController: NavController) {
                 }
             }
 
-
-
             Spacer(Modifier.height(24.dp))
-
 
             // ---------- HOW TO EARN POINTS ----------
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),   // SAME as top card
+                    .padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -178,7 +209,7 @@ fun LoyaltyScreen(navController: NavController) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(20.dp)     // inner padding of the card
+                        .padding(20.dp)
                 ) {
 
                     Text(
@@ -204,7 +235,6 @@ fun LoyaltyScreen(navController: NavController) {
 
             Spacer(Modifier.height(24.dp))
 
-
             // ---------- AVAILABLE REWARDS ----------
             Text(
                 text = "Available Rewards",
@@ -215,22 +245,20 @@ fun LoyaltyScreen(navController: NavController) {
                     .padding(horizontal = 16.dp)
             )
 
-
             Spacer(Modifier.height(12.dp))
-
 
             RewardCard(
                 title = "1 Hour Free Parking",
                 description = "Get 1 hour of free parking at any location",
                 points = 100,
-                icon = R.drawable.ic_feature_realtime_orange,   // your icon
+                icon = R.drawable.ic_feature_realtime_orange,
                 onRedeem = { /* TODO */ }
             )
 
             Spacer(Modifier.height(90.dp))
         }
 
-
+        // ---------- BOTTOM NAV ----------
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -265,7 +293,6 @@ fun LoyaltyScreen(navController: NavController) {
     }
 }
 
-
 @Composable
 fun EarnRow(title: String, pts: String) {
     Row(
@@ -279,8 +306,8 @@ fun EarnRow(title: String, pts: String) {
             modifier = Modifier
                 .padding(horizontal = 8.dp, vertical = 2.dp)
                 .background(Color(0xFFDCFCE7), shape = RoundedCornerShape(8.dp))
-                .padding(horizontal = 12.dp, vertical = 6.dp), // inner padding for space around text
-            contentAlignment = Alignment.Center // center the text inside the box
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 pts,
@@ -289,10 +316,8 @@ fun EarnRow(title: String, pts: String) {
                 fontWeight = FontWeight.Bold
             )
         }
-
     }
 }
-
 
 @Composable
 fun RewardCard(
@@ -308,6 +333,7 @@ fun RewardCard(
             .padding(horizontal = 16.dp)
             .padding(vertical = 8.dp)
             .clip(RoundedCornerShape(16.dp))
+            .clickable { onRedeem() }
             .background(Color.White)
             .border(
                 width = 1.dp,
@@ -330,7 +356,7 @@ fun RewardCard(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFFFF4E5)), // light orange background
+                    .background(Color(0xFFFFF4E5)),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
@@ -340,9 +366,7 @@ fun RewardCard(
                 )
             }
 
-
             Spacer(modifier = Modifier.width(12.dp))
-
 
             // Texts
             Column(
@@ -357,9 +381,7 @@ fun RewardCard(
                     )
                 )
 
-
                 Spacer(modifier = Modifier.height(4.dp))
-
 
                 Text(
                     text = description,
@@ -369,20 +391,17 @@ fun RewardCard(
                     )
                 )
 
-
                 Spacer(modifier = Modifier.height(6.dp))
-
 
                 Text(
                     text = "Redeem Now",
                     style = TextStyle(
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
-                        color = Color(0xFFFFB347) // orange
+                        color = Color(0xFFFFB347)
                     )
                 )
             }
-
 
             // Points badge
             Box(
