@@ -40,6 +40,10 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.aps.viewmodel.AuthViewModel
 
 @Composable
 fun LoginScreen(navController: NavController) {
@@ -47,6 +51,9 @@ fun LoginScreen(navController: NavController) {
     var phoneNumber by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+
+    val authViewModel: AuthViewModel = viewModel()
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -145,7 +152,22 @@ fun LoginScreen(navController: NavController) {
 
         // Login Button
         Button(
-            onClick = { /* TODO: Handle login logic */ },
+            onClick = {
+                authViewModel.loginUser(
+                    context = context,
+                    email = email,
+                    password = password,
+                    onSuccess = {
+                        Toast.makeText(context, "Login successful!", Toast.LENGTH_SHORT).show()
+                        navController.navigate("home") {
+                            popUpTo("login") { inclusive = true }
+                        }
+                    },
+                    onError = { msg ->
+                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                    }
+                )
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(58.dp),

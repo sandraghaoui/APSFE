@@ -1,10 +1,9 @@
 package com.example.aps.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -16,30 +15,56 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.aps.R
+import com.example.aps.viewmodel.AuthViewModel
 
 @Composable
 fun ProfileScreen(navController: NavController) {
+    val authViewModel: AuthViewModel = viewModel()
+    val context = LocalContext.current
 
-    var fullName by remember { mutableStateOf("Jack Celere") }
-    var phone by remember { mutableStateOf("+93123135") }
-    var carPlate by remember { mutableStateOf("0123456789") }
-    var email by remember { mutableStateOf("xxx@gmail.com") }
+    var fullName by remember { mutableStateOf("Loading...") }
+    var phone by remember { mutableStateOf("") }
+    var carPlate by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var loyaltyPoints by remember { mutableStateOf(0) }
+    var balance by remember { mutableStateOf(0.0) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    // Fetch user profile on screen load
+    LaunchedEffect(Unit) {
+        authViewModel.getUserProfile(
+            context = context,
+            onSuccess = { user, people ->
+                fullName = "${user.first_name} ${user.last_name}"
+                phone = user.phone_number
+                email = user.email
+                carPlate = people.plate_number.toString()
+                loyaltyPoints = people.loyalty_points
+                balance = people.balance
+                isLoading = false
+            },
+            onError = { error ->
+                Toast.makeText(context, "Failed to load profile: $error", Toast.LENGTH_LONG).show()
+                isLoading = false
+            }
+        )
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF8FAFC))
     ) {
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -47,13 +72,11 @@ fun ProfileScreen(navController: NavController) {
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             Spacer(modifier = Modifier.height(12.dp))
 
             // ---- PROFILE IMAGE ----
             Box(
-                modifier = Modifier
-                    .size(115.dp),
+                modifier = Modifier.size(115.dp),
                 contentAlignment = Alignment.BottomEnd
             ) {
                 Image(
@@ -78,8 +101,23 @@ fun ProfileScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Text("Tyrone", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-            Text("@TyroneBusiness", fontSize = 13.sp, color = Color.Gray)
+            if (isLoading) {
+                CircularProgressIndicator()
+            } else {
+                Text(fullName, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text(email, fontSize = 13.sp, color = Color.Gray)
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Loyalty & Balance Cards
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    InfoCard("Loyalty Points", loyaltyPoints.toString())
+                    InfoCard("Balance", "$${"%.2f".format(balance)}")
+                }
+            }
 
             Spacer(modifier = Modifier.height(28.dp))
 
@@ -87,8 +125,9 @@ fun ProfileScreen(navController: NavController) {
             ProfileField(
                 label = "Full Name",
                 value = fullName,
-                placeholder = "Jack Celere",
-                onChange = { fullName = it }
+                placeholder = "Full Name",
+                onChange = { fullName = it },
+                enabled = false
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -98,9 +137,10 @@ fun ProfileScreen(navController: NavController) {
                 label = "Phone Number",
                 value = phone,
                 icon = R.drawable.ic_call,
-                placeholder = "+93123135",
+                placeholder = "Phone",
                 keyboard = KeyboardType.Phone,
-                onChange = { phone = it }
+                onChange = { phone = it },
+                enabled = false
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -110,8 +150,9 @@ fun ProfileScreen(navController: NavController) {
                 label = "Car Plate",
                 value = carPlate,
                 icon = R.drawable.ic_circle_lock,
-                placeholder = "0123456789",
-                onChange = { carPlate = it }
+                placeholder = "Car Plate",
+                onChange = { carPlate = it },
+                enabled = false
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -121,16 +162,23 @@ fun ProfileScreen(navController: NavController) {
                 label = "Your Email",
                 value = email,
                 icon = R.drawable.ic_mail,
-                placeholder = "xxx@gmail.com",
+                placeholder = "Email",
                 keyboard = KeyboardType.Email,
-                onChange = { email = it }
+                onChange = { email = it },
+                enabled = false
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
             // ---- LOGOUT BUTTON ----
             Button(
-                onClick = { /* TODO */ },
+                onClick = {
+                    authViewModel.logout(context)
+                    Toast.makeText(context, "Logged out successfully", Toast.LENGTH_SHORT).show()
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -157,7 +205,6 @@ fun ProfileScreen(navController: NavController) {
                 .padding(vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-
             BottomNavItem("Home", R.drawable.ic_nav_home, false) {
                 navController.navigate("home")
             }
@@ -178,23 +225,45 @@ fun ProfileScreen(navController: NavController) {
 }
 
 @Composable
+fun InfoCard(label: String, value: String) {
+    Card(
+        modifier = Modifier
+            .width(160.dp)
+            .height(80.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(label, fontSize = 12.sp, color = Color.Gray)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(value, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+        }
+    }
+}
+
+@Composable
 fun ProfileField(
     label: String,
     value: String,
     icon: Int? = null,
     placeholder: String,
     keyboard: KeyboardType = KeyboardType.Text,
-    onChange: (String) -> Unit
+    onChange: (String) -> Unit,
+    enabled: Boolean = true
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-
         Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF262422))
 
         OutlinedTextField(
             value = value,
             onValueChange = onChange,
             placeholder = { Text(placeholder, color = Color(0xFFABABAB)) },
-
             leadingIcon = if (icon != null) {
                 {
                     Icon(
@@ -203,20 +272,20 @@ fun ProfileField(
                         modifier = Modifier.size(22.dp)
                     )
                 }
-            } else null,     // ← THIS FIXES THE GAP
-
+            } else null,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp),
-
+            enabled = enabled,
             keyboardOptions = KeyboardOptions(keyboardType = keyboard),
             shape = RoundedCornerShape(12.dp),
-
             colors = OutlinedTextFieldDefaults.colors(
                 unfocusedBorderColor = Color(0xFFE7E7E7),
                 focusedBorderColor = Color(0xFFE7E7E7),
+                disabledBorderColor = Color(0xFFE7E7E7),
                 unfocusedContainerColor = Color.White,
-                focusedContainerColor = Color.White
+                focusedContainerColor = Color.White,
+                disabledContainerColor = Color(0xFFF5F5F5)
             )
         )
     }

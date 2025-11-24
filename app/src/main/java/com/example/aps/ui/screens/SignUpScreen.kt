@@ -415,7 +415,7 @@ fun SignUpScreen(navController: NavHostController) {
                         email = email,
                         password = password,
                         onSuccess = {
-                            Toast.makeText(context, "Account created!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Account created! Check your email to confirm, then log in.", Toast.LENGTH_LONG).show()
                             navController.navigate("login")
                         },
                         onError = { msg ->
