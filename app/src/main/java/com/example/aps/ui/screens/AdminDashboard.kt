@@ -2,26 +2,15 @@ package com.example.aps.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,51 +22,60 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.aps.R
 
+// ----------------------------------------------------------------------
+//  ADMIN DASHBOARD MAIN SCREEN
+// ----------------------------------------------------------------------
 @Composable
 fun AdminDashboard(navController: NavController) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF8FAFC)) // slate-50
-    ) {
+
+    var activeTab by remember { mutableStateOf("dashboard") }
+
+    Scaffold(
+        bottomBar = {
+            AdminDashboardBottomBar(
+                activeTab = activeTab,
+                navController = navController,
+                onTabChange = { activeTab = it }
+            )
+        }
+    ) { padding ->
+
         Column(
             modifier = Modifier
+                .padding(padding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp, 24.dp)
+                .background(Color(0xFFF8FAFC))
+                .padding(16.dp)
         ) {
-            // Header Section
+
+            // HEADER -------------------------------------------------------------
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Samer's Parking",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = Color(0xFF1E293B) // slate-800
+                    "Samer's Parking",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Sunday, September 28, 2025",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = Color(0xFF717182)
+                    "Sunday, September 28, 2025",
+                    fontSize = 13.sp,
+                    color = Color.Gray
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(Modifier.height(22.dp))
 
-            // Stats Cards Grid (2x2)
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // First Row
+            // STATS GRID ---------------------------------------------------------
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Current Occupancy Card
                     StatCard(
                         title = "Current Occupancy",
                         value = "247/300",
@@ -85,8 +83,6 @@ fun AdminDashboard(navController: NavController) {
                         iconRes = R.drawable.ic_car,
                         modifier = Modifier.weight(1f)
                     )
-
-                    // Active Reservations Card
                     StatCard(
                         title = "Active Reservations",
                         value = "45",
@@ -96,12 +92,10 @@ fun AdminDashboard(navController: NavController) {
                     )
                 }
 
-                // Second Row
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Daily Revenue Card
                     StatCard(
                         title = "Daily Revenue",
                         value = "$2,450",
@@ -109,8 +103,6 @@ fun AdminDashboard(navController: NavController) {
                         iconRes = R.drawable.ic_revenue,
                         modifier = Modifier.weight(1f)
                     )
-
-                    // Total Customers Card
                     StatCard(
                         title = "Total Customers",
                         value = "892",
@@ -121,52 +113,36 @@ fun AdminDashboard(navController: NavController) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(Modifier.height(24.dp))
 
-            // Occupancy Chart Card
+            // CHART --------------------------------------------------------------
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(Color.White)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(17.33.dp)
-                ) {
+                Column(Modifier.padding(18.dp)) {
+
                     Text(
-                        text = "Today's Occupancy",
+                        "Today's Occupancy",
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.Normal,
-                        color = Color(0xFF1E293B) // slate-800
+                        fontWeight = FontWeight.Bold
                     )
 
-                    Spacer(modifier = Modifier.height(40.dp))
+                    Spacer(Modifier.height(40.dp))
 
-                    // Simple bar chart representation
                     OccupancyChart()
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(onClick = { navController.navigate("home") }) {
-                Text("Back to Home")
-            }
+            Spacer(Modifier.height(80.dp))
         }
-
-        // Bottom Navigation Bar
-        BottomNavigator(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-        )
     }
 }
 
+// ----------------------------------------------------------------------
+//  STAT CARD
+// ----------------------------------------------------------------------
 @Composable
 fun StatCard(
     title: String,
@@ -178,230 +154,127 @@ fun StatCard(
     Card(
         modifier = modifier.height(155.dp),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        colors = CardDefaults.cardColors(Color.White)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(17.33.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = title,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Normal,
-                        color = Color(0xFF717182),
-                        lineHeight = 24.sp
-                    )
-                    Text(
-                        text = value,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Normal,
-                        color = Color(0xFF1E293B), // slate-800
-                        lineHeight = 32.sp
-                    )
-                    Text(
-                        text = change,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Normal,
-                        color = Color(0xFF00A63E), // green
-                        lineHeight = 20.sp
-                    )
-                }
-
-                // Icon Container
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0x1A679180)), // rgba(103,145,128,0.1)
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = iconRes),
-                        contentDescription = title,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun OccupancyChart() {
-    Column(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        // Chart area with bars
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(192.dp)
-        ) {
-            // Y-axis labels (right side)
-            Column(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 4.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
-                horizontalAlignment = Alignment.End
-            ) {
-                Text("280", fontSize = 12.sp, color = Color(0xFF64748B)) // slate-500
-                Text("210", fontSize = 12.sp, color = Color(0xFF64748B))
-                Text("140", fontSize = 12.sp, color = Color(0xFF64748B))
-                Text("70", fontSize = 12.sp, color = Color(0xFF64748B))
-                Text("0", fontSize = 12.sp, color = Color(0xFF64748B))
-            }
-
-            // Chart bars area
-            Row(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .fillMaxWidth()
-                    .padding(end = 40.dp)
-                    .height(192.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.Bottom
-            ) {
-                // Sample bar chart data (heights as percentages of max)
-                val barHeights = listOf(0.55f, 0.48f, 0.31f, 0.14f, 0.02f, 0.11f, 0.28f, 0.55f)
-
-                barHeights.forEach { height ->
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height((192.dp * height))
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(Color(0xFF679180)) // green color
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // X-axis labels (time)
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            listOf("6AM", "8AM", "12PM", "2PM", "4PM", "6PM", "8PM").forEach { time ->
-                Text(
-                    text = time,
-                    fontSize = 12.sp,
-                    color = Color(0xFF64748B) // slate-500
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(title, fontSize = 14.sp, color = Color.Gray)
+                Text(value, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text(change, fontSize = 14.sp, color = Color(0xFF00A63E))
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0x1A679180)),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(iconRes),
+                    contentDescription = title,
+                    modifier = Modifier.size(26.dp)
                 )
             }
         }
     }
 }
 
+// ----------------------------------------------------------------------
+//  BAR CHART
+// ----------------------------------------------------------------------
 @Composable
-fun BottomNavigator(modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier
-            .height(73.dp)
-            .border(
-                width = 1.33.dp,
-                color = Color(0x1A000000), // rgba(0,0,0,0.1)
-                shape = RoundedCornerShape(0.dp)
-            ),
-        shape = RoundedCornerShape(0.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
+fun OccupancyChart() {
+    Column(Modifier.fillMaxWidth()) {
+
         Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 9.5.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            Modifier
+                .fillMaxWidth()
+                .height(180.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.Bottom
         ) {
-            // Dashboard (selected)
-            AdminBottomNavItem(
-                label = "Dashboard",
-                iconRes = R.drawable.ic_dashboard,
-                selected = true
-            )
 
-            // Reservations
-            AdminBottomNavItem(
-                label = "Reservations",
-                iconRes = R.drawable.ic_clock,
-                selected = false
-            )
+            val bars = listOf(0.55f, 0.48f, 0.31f, 0.14f, 0.02f, 0.11f, 0.28f, 0.55f)
 
-            // Finances
-            AdminBottomNavItem(
-                label = "Finances",
-                iconRes = R.drawable.ic_money,
-                selected = false
-            )
+            bars.forEach { h ->
+                Box(
+                    modifier = Modifier
+                        .width(20.dp)
+                        .height((180 * h).dp)
+                        .background(Color(0xFF679180), RoundedCornerShape(6.dp))
+                )
+            }
+        }
 
-            // Adjustments
-            AdminBottomNavItem(
-                label = "Adjustments",
-                iconRes = R.drawable.ic_settings,
-                selected = false
-            )
+        Spacer(Modifier.height(8.dp))
+
+        Row(Modifier.fillMaxWidth(), Arrangement.SpaceEvenly) {
+            listOf("6AM", "8AM", "12PM", "2PM", "4PM", "6PM", "8PM").forEach {
+                Text(it, fontSize = 12.sp, color = Color.Gray)
+            }
         }
     }
 }
 
+// ----------------------------------------------------------------------
+//  IDENTICAL BOTTOM BAR (EXACT COPY OF ADMIN SETTINGS)
+// ----------------------------------------------------------------------
 @Composable
-fun AdminBottomNavItem(
-    label: String,
-    iconRes: Int,
-    selected: Boolean
+fun AdminDashboardBottomBar(
+    activeTab: String,
+    navController: NavController,
+    onTabChange: (String) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .height(56.dp)
-            .clickable { },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    val navItems = listOf(
+        Triple("dashboard", "Dashboard", Icons.Default.BarChart),
+        Triple("reservations", "Reservations", Icons.Default.AccessTime),
+        Triple("finances", "Finances", Icons.Default.CreditCard),
+        Triple("adjustments", "Adjustments", Icons.Default.Settings)
+    )
+
+    Surface(
+        tonalElevation = 3.dp,
+        shadowElevation = 3.dp
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .size(20.dp)
-                .then(
-                    if (selected) {
-                        Modifier.background(
-                            color = Color(0x1A679180), // rgba(103,145,128,0.1)
-                            shape = RoundedCornerShape(10.dp)
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentAlignment = Alignment.Center
+                .padding(vertical = 8.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Image(
-                painter = painterResource(id = iconRes),
-                contentDescription = label,
-                modifier = Modifier.size(16.dp)
-            )
+            navItems.forEach { (key, label, icon) ->
+
+                val selected = key == activeTab
+                val color =
+                    if (selected) MaterialTheme.colorScheme.onSurface else Color.Gray
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .clickable {
+                            onTabChange(key)
+                            when (key) {
+                                "dashboard" -> navController.navigate("admin")
+                                "reservations" -> navController.navigate("admin_reservations")
+                                "finances" -> navController.navigate("financial_reports")
+                                "adjustments" -> navController.navigate("admin_settings")
+                            }
+                        }
+                        .padding(4.dp)
+                ) {
+                    Icon(icon, label, tint = color, modifier = Modifier.size(22.dp))
+                    Text(label, color = color, fontSize = 12.sp)
+                }
+            }
         }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Normal,
-            color = if (selected) Color(0xFF679180) else Color(0xFF717182)
-        )
     }
 }

@@ -449,12 +449,17 @@ fun SignUpScreen(navController: NavHostController) {
             }
             ClickableText(
                 text = annotatedString,
+                modifier = Modifier,   // <-- required so overload is not ambiguous
                 onClick = { offset ->
-                    annotatedString.getStringAnnotations(tag = "LOGIN", start = offset, end = offset).firstOrNull()?.let {
-                        navController.navigate("login")
-                    }
+                    annotatedString
+                        .getStringAnnotations("LOGIN", offset, offset)
+                        .firstOrNull()
+                        ?.let {
+                            navController.navigate("login")
+                        }
                 }
             )
+
         }
     }
 }

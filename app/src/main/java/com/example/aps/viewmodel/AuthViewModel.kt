@@ -72,8 +72,8 @@ class AuthViewModel : ViewModel() {
                 }
 
                 // If we reach here, we have a session (email confirmation was disabled or already confirmed)
-                val uuid = session.user?.id
-                val token = session.accessToken
+                val uuid: String? = session.user?.id
+                val token: String? = session.accessToken
 
                 if (uuid == null || token == null) {
                     Log.e("REGISTER_DEBUG", "ERROR: UUID or token is null")

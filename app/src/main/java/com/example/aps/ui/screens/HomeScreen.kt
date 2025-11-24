@@ -345,4 +345,3 @@ fun BottomNavItem(
         )
     }
 }
-
