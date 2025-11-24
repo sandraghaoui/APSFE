@@ -100,12 +100,20 @@ fun LoyaltyScreen(navController: NavController) {
                                     fontSize = 14.sp
                                 )
 
-                                Text(
-                                    text = "485",
-                                    color = Color.White,
-                                    fontSize = 36.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Row(verticalAlignment = Alignment.Bottom){
+                                    Text(
+                                        text = "485",
+                                        color = Color.White,
+                                        fontSize = 36.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "points",
+                                        color = Color.White,
+                                        fontSize = 18.sp
+                                    )
+                                }
                             }
 
                             Box(

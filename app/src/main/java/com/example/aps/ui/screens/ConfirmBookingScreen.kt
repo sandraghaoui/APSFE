@@ -226,7 +226,7 @@ fun ConfirmBookingScreen(
         // Buttons: Confirm (green) and Cancel (light)
         Button(
             onClick = {
-                onConfirm()
+                navController.navigate("booking_success")
             },
             modifier = Modifier
                 .fillMaxWidth()

@@ -9,6 +9,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.aps.ui.screens.AdminDashboard
+import com.example.aps.ui.screens.BookingSuccessScreen
 import com.example.aps.ui.screens.ConfirmBookingScreen
 import com.example.aps.ui.screens.HomeScreen
 import com.example.aps.ui.screens.LoginScreen
@@ -47,5 +48,6 @@ fun MyApp() {
         composable("profile") { ProfileScreen(navController) }
         composable("purchase_history") { PurchaseHistoryScreen(navController) }
         composable("confirm_booking") { ConfirmBookingScreen(navController) }
+        composable("booking_success") { BookingSuccessScreen(navController) }
     }
 }
