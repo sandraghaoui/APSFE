@@ -4,7 +4,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import com.example.aps.api.RetrofitClient
+import com.example.aps.api.ApiService
+import com.example.aps.api.SessionManager
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.aps.viewmodel.AuthViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -61,6 +70,8 @@ fun SignUpScreen(navController: NavHostController) {
     var carPlateVisible by remember { mutableStateOf(false) }
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
+    val authViewModel: AuthViewModel = viewModel()
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier
@@ -396,16 +407,25 @@ fun SignUpScreen(navController: NavHostController) {
             // Create Account Button
             Button(
                 onClick = {
-                    // TODO: Handle sign up logic
+                    authViewModel.registerUser(
+                        context = context,
+                        fullName = fullName,
+                        phone = phoneNumber,
+                        plate = carPlate,
+                        email = email,
+                        password = password,
+                        onSuccess = {
+                            Toast.makeText(context, "Account created!", Toast.LENGTH_SHORT).show()
+                            navController.navigate("login")
+                        },
+                        onError = { msg ->
+                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                        }
+                    )
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(58.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFEE8924), // Orange button
-                    contentColor = Color.White
-                )
+                    .height(58.dp)
             ) {
                 Text(
                     text = "Create Account",
