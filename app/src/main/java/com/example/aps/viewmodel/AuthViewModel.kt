@@ -39,14 +39,24 @@ class AuthViewModel : ViewModel() {
                     this.password = userPassword
                 }
 
-                // After signup, fetch current session
+                // After signup, check if we have a session
                 val session = supabaseAuth.currentSessionOrNull()
-                val uuid = session?.user?.id
-                val token = session?.accessToken
+
+                if (session == null) {
+                    // Email confirmation required - this is expected behavior
+                    withContext(Dispatchers.Main) {
+                        onSuccess()
+                    }
+                    return@launch
+                }
+
+                // If we reach here, we have a session (email confirmation was disabled)
+                val uuid = session.user?.id
+                val token = session.accessToken
 
                 if (uuid == null || token == null) {
                     withContext(Dispatchers.Main) {
-                        onError("Authentication failed: Please check your email to confirm your account")
+                        onError("Authentication failed: Invalid session")
                     }
                     return@launch
                 }
