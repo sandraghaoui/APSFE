@@ -90,6 +90,12 @@ interface ApiService {
         @Path("name") name: String
     ): Response<ParkingRead>
 
+    @PATCH("parkings/{name}")
+    suspend fun updateParking(
+        @Path("name") name: String,
+        @Body body: ParkingUpdate
+    ): Response<ParkingRead>
+
     @DELETE("parkings/{name}")
     suspend fun deleteParking(
         @Path("name") name: String

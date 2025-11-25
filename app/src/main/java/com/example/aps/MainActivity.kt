@@ -58,13 +58,15 @@ fun MyApp() {
         composable("profile") { ProfileScreen(navController) }
         composable("purchase_history") { PurchaseHistoryScreen(navController) }
         composable(
-            route = "confirm_booking?parkingName={parkingName}&location={location}&pricePerHour={pricePerHour}&currentCapacity={currentCapacity}&maxCapacity={maxCapacity}",
+            route = "confirm_booking?parkingName={parkingName}&location={location}&pricePerHour={pricePerHour}&currentCapacity={currentCapacity}&maxCapacity={maxCapacity}&openTime={openTime}&closeTime={closeTime}",
             arguments = listOf(
                 navArgument("parkingName") { type = NavType.StringType },
                 navArgument("location") { type = NavType.StringType },
                 navArgument("pricePerHour") { type = NavType.FloatType },
                 navArgument("currentCapacity") { type = NavType.IntType },
-                navArgument("maxCapacity") { type = NavType.IntType }
+                navArgument("maxCapacity") { type = NavType.IntType },
+                navArgument("openTime") { type = NavType.StringType },
+                navArgument("closeTime") { type = NavType.StringType }
             )
         ) { backStackEntry ->
             val parkingName = backStackEntry.arguments?.getString("parkingName") ?: ""
@@ -72,13 +74,17 @@ fun MyApp() {
             val pricePerHour = backStackEntry.arguments?.getFloat("pricePerHour") ?: 0f
             val currentCapacity = backStackEntry.arguments?.getInt("currentCapacity") ?: 0
             val maxCapacity = backStackEntry.arguments?.getInt("maxCapacity") ?: 0
+            val openTime = backStackEntry.arguments?.getString("openTime") ?: ""
+            val closeTime = backStackEntry.arguments?.getString("closeTime") ?: ""
             ConfirmBookingScreen(
                 navController = navController,
                 parkingName = parkingName,
                 parkingLocation = location,
                 pricePerHour = pricePerHour.toDouble(),
                 currentCapacity = currentCapacity,
-                maxCapacity = maxCapacity
+                maxCapacity = maxCapacity,
+                openTime = openTime,
+                closeTime = closeTime
             )
         }
         composable(

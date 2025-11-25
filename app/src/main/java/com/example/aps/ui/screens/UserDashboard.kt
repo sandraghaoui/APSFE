@@ -1,6 +1,5 @@
 package com.example.aps.ui.screens
 
-import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -30,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.aps.CameraActivity
 import com.example.aps.R
 import com.example.aps.api.ParkingRead
 import com.example.aps.api.SessionManager
@@ -250,8 +247,10 @@ fun UserDashboard(navController: NavController) {
                                     // Encode parking data for navigation
                                     val encodedName = URLEncoder.encode(parking.name, StandardCharsets.UTF_8.toString())
                                     val encodedLocation = URLEncoder.encode(parking.location, StandardCharsets.UTF_8.toString())
+                                    val encodedOpenTime = URLEncoder.encode(parking.open_time, StandardCharsets.UTF_8.toString())
+                                    val encodedCloseTime = URLEncoder.encode(parking.close_time, StandardCharsets.UTF_8.toString())
                                     navController.navigate(
-                                        "confirm_booking?parkingName=$encodedName&location=$encodedLocation&pricePerHour=${parking.price_per_hour}&currentCapacity=${parking.current_capacity}&maxCapacity=${parking.maximum_capacity}"
+                                        "confirm_booking?parkingName=$encodedName&location=$encodedLocation&pricePerHour=${parking.price_per_hour}&currentCapacity=${parking.current_capacity}&maxCapacity=${parking.maximum_capacity}&openTime=$encodedOpenTime&closeTime=$encodedCloseTime"
                                     )
                                 }
                             )

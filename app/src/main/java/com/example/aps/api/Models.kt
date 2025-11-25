@@ -79,6 +79,15 @@ data class ParkingCreate(
     // owner_uuid auto-filled by backend from token
 )
 @Serializable
+data class ParkingUpdate(
+    val current_capacity: Int? = null,
+    val maximum_capacity: Int? = null,
+    val price_per_hour: Double? = null,
+    val open_time: String? = null,
+    val close_time: String? = null,
+    val location: String? = null
+)
+@Serializable
 data class ParkingRead(
     val name: String,
     val owner_uuid: String,
