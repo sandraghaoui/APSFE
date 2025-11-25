@@ -96,7 +96,7 @@ fun LoginScreen(navController: NavController) {
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Phone Number Field
+        // Phone Number Field (currently not used for login, but kept in UI)
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -139,8 +139,12 @@ fun LoginScreen(navController: NavController) {
                 leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                 trailingIcon = {
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        val icon = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
-                        Icon(icon, contentDescription = if (passwordVisible) "Hide password" else "Show password")
+                        val icon =
+                            if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                        Icon(
+                            icon,
+                            contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                        )
                     }
                 },
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -157,10 +161,19 @@ fun LoginScreen(navController: NavController) {
                     context = context,
                     email = email,
                     password = password,
-                    onSuccess = {
+                    onSuccess = { isAdmin ->
                         Toast.makeText(context, "Login successful!", Toast.LENGTH_SHORT).show()
-                        navController.navigate("home") {
-                            popUpTo("login") { inclusive = true }
+
+                        if (isAdmin) {
+                            // ADMIN → go to admin dashboard
+                            navController.navigate("admin") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        } else {
+                            // NORMAL USER → go to regular home
+                            navController.navigate("home") {
+                                popUpTo("login") { inclusive = true }
+                            }
                         }
                     },
                     onError = { msg ->
@@ -174,7 +187,12 @@ fun LoginScreen(navController: NavController) {
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF85BCA5))
         ) {
-            Text("Log In", fontSize = 16.sp, color = Color.White, fontWeight = FontWeight.Bold)
+            Text(
+                "Log In",
+                fontSize = 16.sp,
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -185,7 +203,13 @@ fun LoginScreen(navController: NavController) {
                 append("Don't have an account? ")
             }
             pushStringAnnotation(tag = "SIGNUP", annotation = "signup")
-            withStyle(style = SpanStyle(fontSize = 14.sp, color = Color(0xD60000B6), fontWeight = FontWeight.Bold)) {
+            withStyle(
+                style = SpanStyle(
+                    fontSize = 14.sp,
+                    color = Color(0xD60000B6),
+                    fontWeight = FontWeight.Bold
+                )
+            ) {
                 append("Sign up!")
             }
             pop()
@@ -194,9 +218,10 @@ fun LoginScreen(navController: NavController) {
         ClickableText(
             text = annotatedString,
             onClick = { offset ->
-                annotatedString.getStringAnnotations(tag = "SIGNUP", start = offset, end = offset).firstOrNull()?.let {
-                    navController.navigate("signup")
-                }
+                annotatedString.getStringAnnotations(tag = "SIGNUP", start = offset, end = offset)
+                    .firstOrNull()?.let {
+                        navController.navigate("signup")
+                    }
             }
         )
     }
