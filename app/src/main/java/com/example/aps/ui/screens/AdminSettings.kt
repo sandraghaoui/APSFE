@@ -1,5 +1,7 @@
 package com.example.aps.ui.screens
 
+import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -265,6 +267,30 @@ fun AdminSettingsScreen(navController: NavController) {
                         Text("Activate", fontWeight = FontWeight.Bold)
                     }
                 }
+
+                // ---- LOGOUT BUTTON ----
+                Button(
+                    onClick = {
+                        sessionManager.clearSession()
+                        Toast.makeText(context, "Logged out successfully", Toast.LENGTH_SHORT).show()
+                        navController.navigate("home") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = Color(0xFF85BCA5)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color(0xFF85BCA5))
+                ) {
+                    Text("Logout", fontSize = 16.sp)
+                }
+
+                Spacer(modifier = Modifier.height(90.dp))
             }
         }
     }
