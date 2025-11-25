@@ -145,6 +145,7 @@ fun HomeScreen(navController: NavController) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(horizontal = horizontalPadding, vertical = verticalPadding)
                     .clip(RoundedCornerShape(28.dp))
                     .background(
                         Brush.linearGradient(
@@ -153,7 +154,7 @@ fun HomeScreen(navController: NavController) {
                             end = Offset(1000f, 1000f)
                         )
                     )
-                    .padding(horizontal = horizontalPadding, vertical = verticalPadding)
+                    .padding(horizontal = horizontalPadding * 1.5f, vertical = verticalPadding)
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -196,14 +197,14 @@ fun HomeScreen(navController: NavController) {
 
                     Spacer(Modifier.height(12.dp))
 
-                    OutlinedButton(
+                    Button(
                         onClick = { navController.navigate("login") },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height((screenHeight * 0.06f).coerceAtMost(56.dp).coerceAtLeast(48.dp)),
                         shape = RoundedCornerShape(50),
-                        border = BorderStroke(1.dp, Color(0x66FFFFFF)),
-                        colors = ButtonDefaults.outlinedButtonColors(
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = greenLight,
                             contentColor = Color.White
                         )
                     ) {
@@ -213,6 +214,7 @@ fun HomeScreen(navController: NavController) {
                         )
                     }
                 }
+                Spacer(Modifier.height(verticalPadding * 2f))
             }
         }
     }
