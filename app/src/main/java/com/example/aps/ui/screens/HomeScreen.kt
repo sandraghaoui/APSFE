@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.aps.R
+import androidx.compose.foundation.layout.width
 
 @Composable
 fun HomeScreen(navController: NavController) {
@@ -219,6 +220,12 @@ fun HomeScreen(navController: NavController) {
                             contentColor = GreenBottom
                         )
                     ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_signup),
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
                         Text("Create Account")
                     }
 
@@ -236,7 +243,20 @@ fun HomeScreen(navController: NavController) {
                             contentColor = Color.White
                         )
                     ) {
-                        Text("Log In")
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_login),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+
+                            Spacer(Modifier.width(8.dp))
+
+                            Text("Log In")
+                        }
                     }
                 }
             }
@@ -283,6 +303,9 @@ fun FeatureCard(
         modifier = modifier
             .height(140.dp),
         shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFE2E8F0)
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
