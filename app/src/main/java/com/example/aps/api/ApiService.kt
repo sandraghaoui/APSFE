@@ -106,7 +106,10 @@ interface ApiService {
     ): Response<ReservationRead>
 
     @GET("reservations")
-    suspend fun listReservations(): Response<List<ReservationRead>>
+    suspend fun listReservations(
+        @Query("parking_id") parkingId: String? = null,
+        @Query("people_uuid") peopleUuid: String? = null
+    ): Response<List<ReservationRead>>
 
     @DELETE("reservations/{id}")
     suspend fun deleteReservation(

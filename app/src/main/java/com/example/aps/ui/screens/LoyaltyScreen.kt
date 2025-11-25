@@ -40,7 +40,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.aps.R
 import com.example.aps.viewmodel.LoyaltyViewModel
-
 @Composable
 fun LoyaltyScreen(
     navController: NavController,

@@ -1,21 +1,31 @@
 package com.example.aps.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.aps.R
+import com.example.aps.api.ApiService
+import com.example.aps.api.RetrofitClient
+import com.example.aps.api.SessionManager
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+private const val PURCHASE_HISTORY_TAG = "PurchaseHistoryScreen"
 
 // ------------------- DATA MODEL -------------------
 data class TransactionItem(
@@ -32,56 +42,99 @@ data class TransactionItem(
 @Composable
 fun PurchaseHistoryScreen(navController: NavController) {
 
-    val transactions = listOf(
-        TransactionItem(
-            "Cash-in",
-            "From ABC Bank ATM",
-            "$100.00",
-            "confirmed",
-            true,
-            "17 Sep 2023 • 10:34 AM"
-        ),
-        TransactionItem(
-            "Cashback from purchase",
-            "Purchase from Amazon.com",
-            "$1.75",
-            "confirmed",
-            true,
-            "16 Sep 2023 • 16:08 PM"
-        ),
-        TransactionItem(
-            "Transfer to card",
-            "",
-            "$9000.00",
-            "confirmed",
-            true,
-            "16 Sep 2023 • 11:21 AM"
-        ),
-        TransactionItem(
-            "Transfer to card",
-            "Not enough funds",
-            "$9267.00",
-            "canceled",
-            false,
-            "15 Sep 2023 • 10:11 AM"
-        ),
-        TransactionItem(
-            "Cashback from purchase",
-            "Purchase from Books.com",
-            "$3.21",
-            "confirmed",
-            true,
-            "14 Sep 2023 • 18:59 PM"
-        ),
-        TransactionItem(
-            "Transfer to card",
-            "",
-            "$70.00",
-            "confirmed",
-            true,
-            "13 Sep 2023 • 10:21 AM"
-        )
-    )
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+    val api = remember {
+        RetrofitClient.getClient { sessionManager.getAccessToken() }
+            .create(ApiService::class.java)
+    }
+
+    var transactions by remember { mutableStateOf<List<TransactionItem>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        Log.d(PURCHASE_HISTORY_TAG, "Starting payments fetch")
+        isLoading = true
+        errorMessage = null
+        try {
+            val peopleResp = api.getMyPeople()
+            Log.d(
+                PURCHASE_HISTORY_TAG,
+                "getMyPeople success=${peopleResp.isSuccessful} code=${peopleResp.code()}"
+            )
+            if (!peopleResp.isSuccessful || peopleResp.body() == null) {
+                val errorBody = peopleResp.errorBody()?.string() ?: "Unknown error"
+                errorMessage = "Unable to load your profile: $errorBody"
+                Log.e(PURCHASE_HISTORY_TAG, "Failed to load profile: $errorBody")
+                isLoading = false
+                return@LaunchedEffect
+            }
+            val userUuid = peopleResp.body()!!.uuid
+            Log.d(PURCHASE_HISTORY_TAG, "Resolved user UUID $userUuid")
+
+            val reservationsResp = api.listReservations(peopleUuid = userUuid)
+            Log.d(
+                PURCHASE_HISTORY_TAG,
+                "listReservations success=${reservationsResp.isSuccessful} code=${reservationsResp.code()} size=${reservationsResp.body()?.size}"
+            )
+            if (!reservationsResp.isSuccessful || reservationsResp.body() == null) {
+                val errorBody = reservationsResp.errorBody()?.string() ?: "Unknown error"
+                errorMessage = "Unable to load reservations: $errorBody"
+                Log.e(PURCHASE_HISTORY_TAG, "Failed reservations fetch: $errorBody")
+                isLoading = false
+                return@LaunchedEffect
+            }
+            val userReservations = reservationsResp.body()!!
+                .filter { it.people_uuid == userUuid }
+            Log.d(
+                PURCHASE_HISTORY_TAG,
+                "User reservations count=${userReservations.size}"
+            )
+
+            val parkingResp = api.listParkings()
+            Log.d(
+                PURCHASE_HISTORY_TAG,
+                "listParkings success=${parkingResp.isSuccessful} code=${parkingResp.code()} size=${parkingResp.body()?.size}"
+            )
+            val parkingMap = if (parkingResp.isSuccessful && parkingResp.body() != null) {
+                parkingResp.body()!!.associateBy { it.name }
+            } else emptyMap()
+            Log.d(PURCHASE_HISTORY_TAG, "Mapped ${parkingMap.size} parkings")
+
+            val isoParser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            val spaceParser = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            val formatter = SimpleDateFormat("dd MMM yyyy • HH:mm", Locale.getDefault())
+
+            transactions = userReservations
+                .sortedByDescending { it.time }
+                .map { res ->
+                    val parsedDate = parseReservationTime(res.time, isoParser, spaceParser)
+                    val dateText = parsedDate?.let { formatter.format(it) } ?: res.time
+                    val parking = parkingMap[res.parking_id]
+                    val status = res.status.ifBlank { "pending" }
+                    val normalized = status.lowercase()
+
+                    TransactionItem(
+                        title = parking?.name ?: res.parking_id,
+                        description = parking?.location ?: "Parking ${res.parking_id}",
+                        amount = String.format(Locale.getDefault(), "$%.2f", res.price),
+                        status = status,
+                        isConfirmed = normalized !in listOf("canceled", "cancelled", "failed"),
+                        date = dateText
+                    )
+                }
+            Log.d(
+                PURCHASE_HISTORY_TAG,
+                "Prepared ${transactions.size} transaction items"
+            )
+            isLoading = false
+        } catch (e: Exception) {
+            errorMessage = e.message ?: "Unexpected error"
+            Log.e(PURCHASE_HISTORY_TAG, "Error loading payments", e)
+            isLoading = false
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -92,99 +145,44 @@ fun PurchaseHistoryScreen(navController: NavController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 16.dp)
+                .padding(horizontal = 16.dp, vertical = 24.dp)
         ) {
 
-            // ---------- TOP PADDING ----------
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // ---------- TOP CARD SELECTOR ----------
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                // VISA CARD BOX
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp)
-                        .background(Color(0xFFFFE1B3), RoundedCornerShape(14.dp))
-                        .padding(horizontal = 16.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "VISA",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFFFFFFF)
-                        )
-
-                        Spacer(modifier = Modifier.width(6.dp))
-
-                        Text(
-                            text = "ending with ***9749",
-                            fontSize = 13.sp,
-                            color = Color(0xFFFFFFFF)
-                        )
-
-                        Spacer(modifier = Modifier.weight(1f))
-
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_arrow_down),
-                            contentDescription = null,
-                            tint = Color(0xFFFFFFFF),
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                // RIGHT: SEARCH + FILTER
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .background(Color.White, RoundedCornerShape(12.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_search),
-                            contentDescription = null,
-                            tint = Color(0xFF363636),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .background(Color.White, RoundedCornerShape(12.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_filter),
-                            contentDescription = null,
-                            tint = Color(0xFF363636),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
             // ---------- LIST ----------
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(bottom = 80.dp)
-            ) {
-                items(transactions) { item ->
-                    TransactionCard(item)
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+                errorMessage != null -> {
+                    Text(
+                        text = errorMessage!!,
+                        color = Color(0xFFE53935),
+                        modifier = Modifier.padding(top = 24.dp)
+                    )
+                }
+                transactions.isEmpty() -> {
+                    Text(
+                        text = "No payments yet. Start by making a reservation.",
+                        color = Color.Gray,
+                        modifier = Modifier.padding(top = 24.dp)
+                    )
+                }
+                else -> {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = PaddingValues(bottom = 80.dp)
+                    ) {
+                        items(transactions) { item ->
+                            TransactionCard(item)
+                        }
+                    }
                 }
             }
         }
@@ -225,6 +223,22 @@ fun PurchaseHistoryScreen(navController: NavController) {
     }
 }
 
+
+private fun parseReservationTime(
+    raw: String,
+    isoParser: SimpleDateFormat,
+    spaceParser: SimpleDateFormat
+): Date? {
+    return try {
+        if (raw.contains("T")) {
+            isoParser.parse(raw)
+        } else {
+            spaceParser.parse(raw)
+        }
+    } catch (e: Exception) {
+        null
+    }
+}
 
 // ------------------- ITEM CARD -------------------
 @Composable
