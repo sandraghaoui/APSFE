@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Offset
@@ -28,6 +29,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import com.example.aps.api.*
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 /**
  * -------------------------------
@@ -40,6 +47,7 @@ fun FRSettingsCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Surface(
+        color = Color.White,
         shape = RoundedCornerShape(16.dp),
         tonalElevation = 2.dp,
         shadowElevation = 1.dp,
@@ -168,69 +176,7 @@ fun SimpleLineChart(data: List<Pair<String, Int>>) {
     }
 }
 
-/**
- * -------------------------------
- * BOTTOM NAVIGATION (working navigation)
- * -------------------------------
- */
-@Composable
-fun FinancialBottomBar(
-    activeTab: String,
-    onTabChange: (String) -> Unit,
-    navController: NavController?
-) {
-    val navItems = listOf(
-        Triple("dashboard", "Dashboard", Icons.Default.BarChart),
-        Triple("reservations", "Reservations", Icons.Default.AccessTime),
-        Triple("finances", "Finances", Icons.Default.CreditCard),
-        Triple("adjustments", "Adjustments", Icons.Default.Settings)
-    )
-
-    Surface(
-        tonalElevation = 3.dp,
-        shadowElevation = 3.dp,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(vertical = 8.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            navItems.forEach { (value, label, icon) ->
-
-                val selected = value == activeTab
-                val color = if (selected) MaterialTheme.colorScheme.onSurface else Color.Gray
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clickable {
-                            onTabChange(value)
-
-                            when (value) {
-                                "dashboard" -> navController?.navigate("admin")
-                                "adjustments" -> navController?.navigate("admin_settings")
-                                "finances" -> navController?.navigate("finances")
-                                "reservations" -> navController?.navigate("admin_reservations")
-                                else -> "dashboard"
-                            }
-                        }
-                        .padding(4.dp)
-                ) {
-                    Icon(
-                        icon,
-                        contentDescription = label,
-                        tint = color,
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Text(text = label, color = color, fontSize = 12.sp)
-                }
-            }
-        }
-    }
-}
+// Old FinancialBottomBar removed - using shared AdminBottomNavBar
 
 /**
  * -------------------------------
@@ -241,24 +187,91 @@ fun FinancialBottomBar(
 fun FinancialReportsScreen(navController: NavController? = null) {
 
     var activeTab by remember { mutableStateOf("finances") }
+    
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+    val api = remember {
+        RetrofitClient.getClient { sessionManager.getAccessToken() }
+            .create(ApiService::class.java)
+    }
+    
+    var parkingName by remember { mutableStateOf<String?>(null) }
+    var dailyRevenue by remember { mutableStateOf(0.0) }
+    var weeklyRevenue by remember { mutableStateOf(0.0) }
+    var monthlyRevenue by remember { mutableStateOf(0.0) }
+    var chartData by remember { mutableStateOf<List<Pair<String, Int>>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
+    
+    LaunchedEffect(Unit) {
+        scope.launch {
+            try {
+                val adminResp = api.getMyAdmin()
+                if (adminResp.isSuccessful && adminResp.body() != null) {
+                    val adminUuid = adminResp.body()!!.uuid
+                    val parkingResp = api.listParkings()
+                    if (parkingResp.isSuccessful && parkingResp.body() != null) {
+                        val allParkings = parkingResp.body()!!
+                        val parking = allParkings.firstOrNull { it.owner_uuid == adminUuid }
+                            ?: allParkings.firstOrNull()
+                        parkingName = parking?.name
+                        
+                        if (parking != null) {
+                            val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                            val calendar = Calendar.getInstance()
+                            
+                            // Daily revenue
+                            val dailyResp = api.listRevenues(parkingId = parking.name, start = today, end = today)
+                            if (dailyResp.isSuccessful && dailyResp.body() != null) {
+                                dailyRevenue = dailyResp.body()!!.sumOf { it.revenue }
+                            }
+                            
+                            // Weekly revenue (last 7 days)
+                            calendar.add(Calendar.DAY_OF_MONTH, -7)
+                            val weekStart = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(calendar.time)
+                            val weeklyResp = api.listRevenues(parkingId = parking.name, start = weekStart, end = today)
+                            if (weeklyResp.isSuccessful && weeklyResp.body() != null) {
+                                weeklyRevenue = weeklyResp.body()!!.sumOf { it.revenue }
+                            }
+                            
+                            // Monthly revenue (last 30 days)
+                            calendar.time = Date()
+                            calendar.add(Calendar.DAY_OF_MONTH, -30)
+                            val monthStart = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(calendar.time)
+                            val monthlyResp = api.listRevenues(parkingId = parking.name, start = monthStart, end = today)
+                            if (monthlyResp.isSuccessful && monthlyResp.body() != null) {
+                                monthlyRevenue = monthlyResp.body()!!.sumOf { it.revenue }
+                                
+                                // Create chart data from last 5 revenue entries
+                                val revenues = monthlyResp.body()!!.sortedBy { it.date }.takeLast(5)
+                                chartData = revenues.map { rev ->
+                                    val date = SimpleDateFormat("MMM d", Locale.getDefault()).format(
+                                        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(rev.date) ?: Date()
+                                    )
+                                    date to rev.revenue.toInt()
+                                }
+                            }
+                        }
+                        isLoading = false
+                    }
+                }
+            } catch (e: Exception) {
+                isLoading = false
+            }
+        }
+    }
 
     Scaffold(
         bottomBar = {
-            FinancialBottomBar(
-                activeTab = activeTab,
-                onTabChange = { activeTab = it },
-                navController = navController
-            )
+            if (navController != null) {
+                AdminBottomNavBar(
+                    activeTab = activeTab,
+                    navController = navController,
+                    onTabChange = { activeTab = it }
+                )
+            }
         }
     ) { padding ->
-
-        val chartData = listOf(
-            "Sep 11" to 2100,
-            "Sep 16" to 1900,
-            "Sep 21" to 2300,
-            "Sep 26" to 2800,
-            "Oct 1" to 2450
-        )
 
         Column(
             modifier = Modifier
@@ -281,8 +294,12 @@ fun FinancialReportsScreen(navController: NavController? = null) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Samer's Parking", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    Text("Wednesday, October 1, 2025", color = Color.Gray, fontSize = 13.sp)
+                    Text(parkingName ?: "Loading...", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault()).format(Date()),
+                        color = Color.Gray,
+                        fontSize = 13.sp
+                    )
                 }
             }
 
@@ -302,7 +319,11 @@ fun FinancialReportsScreen(navController: NavController? = null) {
                         Text("Daily Revenue", color = Color.Gray, fontSize = 14.sp)
                         Spacer(modifier = Modifier.height(6.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("$2,450", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                String.format("$%,.2f", dailyRevenue),
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                             Spacer(modifier = Modifier.width(12.dp))
                             Surface(
                                 color = Color(0xFF3CD6B7).copy(alpha = 0.2f),
@@ -318,7 +339,11 @@ fun FinancialReportsScreen(navController: NavController? = null) {
                                 }
                             }
                         }
-                        Text("+8.5%", color = Color(0xFF22C55E), fontWeight = FontWeight.Medium)
+                        Text(
+                            if (dailyRevenue > 0) "Today" else "No revenue",
+                            color = Color(0xFF22C55E),
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
 
@@ -328,7 +353,11 @@ fun FinancialReportsScreen(navController: NavController? = null) {
                         Text("Weekly Revenue", color = Color.Gray, fontSize = 14.sp)
                         Spacer(modifier = Modifier.height(6.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("$13,970", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                String.format("$%,.2f", weeklyRevenue),
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                             Spacer(modifier = Modifier.width(12.dp))
                             Surface(
                                 color = Color(0xFFE5E7EB),
@@ -344,7 +373,11 @@ fun FinancialReportsScreen(navController: NavController? = null) {
                                 }
                             }
                         }
-                        Text("-2.5%", color = Color(0xFFEF4444), fontWeight = FontWeight.Medium)
+                        Text(
+                            if (weeklyRevenue > 0) "Last 7 days" else "No revenue",
+                            color = if (weeklyRevenue > 0) Color(0xFF22C55E) else Color(0xFFEF4444),
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
 
@@ -354,7 +387,11 @@ fun FinancialReportsScreen(navController: NavController? = null) {
                         Text("Monthly Revenue", color = Color.Gray, fontSize = 14.sp)
                         Spacer(modifier = Modifier.height(6.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("$63,310", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                String.format("$%,.2f", monthlyRevenue),
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                             Spacer(modifier = Modifier.width(12.dp))
                             Surface(
                                 color = Color(0xFFE5E7EB),
@@ -370,13 +407,21 @@ fun FinancialReportsScreen(navController: NavController? = null) {
                                 }
                             }
                         }
-                        Text("+4.0%", color = Color(0xFF22C55E), fontWeight = FontWeight.Medium)
+                        Text(
+                            if (monthlyRevenue > 0) "Last 30 days" else "No revenue",
+                            color = if (monthlyRevenue > 0) Color(0xFF22C55E) else Color(0xFFEF4444),
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
 
                 // Chart
                 FRSettingsCard {
-                    SimpleLineChart(chartData)
+                    if (chartData.isNotEmpty()) {
+                        SimpleLineChart(chartData)
+                    } else {
+                        Text("No chart data available", color = Color.Gray)
+                    }
                 }
             }
         }

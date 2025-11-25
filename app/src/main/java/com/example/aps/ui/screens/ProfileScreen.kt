@@ -200,26 +200,36 @@ fun ProfileScreen(navController: NavController) {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .height(60.dp)
+                .height(70.dp)
                 .background(Color.White)
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+                .padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            BottomNavItem("Home", R.drawable.ic_nav_home, false) {
-                navController.navigate("home")
-            }
+            BottomNavItem(
+                label = "Home",
+                imageRes = R.drawable.ic_nav_home,
+                onClick = { navController.navigate("user_dashboard") }
+            )
 
-            BottomNavItem("Payments", R.drawable.ic_nav_payments) {
-                navController.navigate("purchase_history")
-            }
+            BottomNavItem(
+                label = "Payments",
+                imageRes = R.drawable.ic_nav_payments,
+                onClick = { navController.navigate("purchase_history") }
+            )
 
-            BottomNavItem("Loyalty", R.drawable.ic_nav_loyalty) {
-                navController.navigate("loyalty")
-            }
+            BottomNavItem(
+                label = "Loyalty",
+                imageRes = R.drawable.ic_nav_loyalty,
+                onClick = { navController.navigate("loyalty") }
+            )
 
-            BottomNavItem("Profile", R.drawable.ic_nav_profile, selected = true) {
-                navController.navigate("profile")
-            }
+            BottomNavItem(
+                label = "Profile",
+                imageRes = R.drawable.ic_nav_profile,
+                selected = true,
+                onClick = { navController.navigate("profile") }
+            )
         }
     }
 }

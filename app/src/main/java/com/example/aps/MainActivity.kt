@@ -21,6 +21,7 @@ import com.example.aps.ui.screens.SplashScreen
 import com.example.aps.ui.screens.AdminSettingsScreen
 import com.example.aps.ui.screens.FinancialReportsScreen
 import com.example.aps.ui.screens.AdminReservationsScreen
+import com.example.aps.ui.screens.UserDashboard
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,7 +44,8 @@ fun MyApp() {
         startDestination = "splash"
     ) {
         composable("splash") { SplashScreen(navController) }
-        composable("home") { HomeScreen(navController) }
+        composable("home") { HomeScreen(navController) } // Login/Welcome screen
+        composable("user_dashboard") { UserDashboard(navController) } // User main screen
         composable("signup") { SignUpScreen(navController) }
         composable("login") { LoginScreen(navController) }
         composable("admin") { AdminDashboard(navController) }

@@ -194,21 +194,33 @@ fun PurchaseHistoryScreen(navController: NavController) {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .height(60.dp)
+                .height(70.dp)
                 .background(Color.White)
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+                .padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            BottomNavItem("Home", R.drawable.ic_nav_home) {
-                navController.navigate("home")
-            }
-            BottomNavItem("Payments", R.drawable.ic_nav_payments, selected = true) {}
-            BottomNavItem("Loyalty", R.drawable.ic_nav_loyalty) {
-                navController.navigate("loyalty")
-            }
-            BottomNavItem("Profile", R.drawable.ic_nav_profile) {
-                navController.navigate("profile")
-            }
+            BottomNavItem(
+                label = "Home",
+                imageRes = R.drawable.ic_nav_home,
+                onClick = { navController.navigate("user_dashboard") }
+            )
+            BottomNavItem(
+                label = "Payments",
+                imageRes = R.drawable.ic_nav_payments,
+                selected = true,
+                onClick = { navController.navigate("purchase_history") }
+            )
+            BottomNavItem(
+                label = "Loyalty",
+                imageRes = R.drawable.ic_nav_loyalty,
+                onClick = { navController.navigate("loyalty") }
+            )
+            BottomNavItem(
+                label = "Profile",
+                imageRes = R.drawable.ic_nav_profile,
+                onClick = { navController.navigate("profile") }
+            )
         }
     }
 }

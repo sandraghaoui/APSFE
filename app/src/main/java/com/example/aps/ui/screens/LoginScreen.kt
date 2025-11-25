@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.aps.viewmodel.AuthViewModel
 
@@ -54,24 +55,32 @@ fun LoginScreen(navController: NavController) {
 
     val authViewModel: AuthViewModel = viewModel()
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val screenHeight = configuration.screenHeightDp.dp
+    val screenWidth = configuration.screenWidthDp.dp
+    
+    // Responsive dimensions
+    val horizontalPadding = (screenWidth * 0.06f).coerceAtMost(24.dp).coerceAtLeast(16.dp)
+    val verticalPadding = (screenHeight * 0.03f).coerceAtMost(32.dp).coerceAtLeast(16.dp)
+    val topSpacer = (screenHeight * 0.08f).coerceAtMost(60.dp).coerceAtLeast(40.dp)
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
-            .padding(24.dp),
+            .padding(horizontal = horizontalPadding, vertical = verticalPadding),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(60.dp))
+        Spacer(modifier = Modifier.height(topSpacer))
 
         Text(
             text = "Log In To your Account",
-            fontSize = 24.sp,
+            fontSize = (screenWidth.value * 0.06f).coerceIn(20f, 24f).sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
 
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(verticalPadding * 1.5f))
 
         // Email Field
         Column(
@@ -170,8 +179,8 @@ fun LoginScreen(navController: NavController) {
                                 popUpTo("login") { inclusive = true }
                             }
                         } else {
-                            // NORMAL USER → go to regular home
-                            navController.navigate("home") {
+                            // NORMAL USER → go to user dashboard
+                            navController.navigate("user_dashboard") {
                                 popUpTo("login") { inclusive = true }
                             }
                         }
@@ -183,13 +192,13 @@ fun LoginScreen(navController: NavController) {
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(58.dp),
+                .height((screenHeight * 0.07f).coerceAtMost(58.dp).coerceAtLeast(50.dp)),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF85BCA5))
         ) {
             Text(
                 "Log In",
-                fontSize = 16.sp,
+                fontSize = (screenWidth.value * 0.04f).coerceIn(14f, 16f).sp,
                 color = Color.White,
                 fontWeight = FontWeight.Bold
             )

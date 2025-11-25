@@ -14,10 +14,12 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,11 +30,17 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import com.example.aps.api.*
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 // ---------------------------------------------
 // DATA CLASS
 // ---------------------------------------------
-data class Reservation(
+data class ReservationDisplay(
     val plate: String,
     val status: String,
     val statusColor: Color,
@@ -51,49 +59,102 @@ fun AdminReservationsScreen(navController: NavController) {
     var activeTab by remember { mutableStateOf("reservations") }
 
     val background = Color(0xFFF6F7F8)
-
-    val reservations = listOf(
-        Reservation(
-            plate = "A46123",
-            status = "active",
-            statusColor = Color(0xFF16C172),
-            price = "$12",
-            customerName = "Sandra Ghaoui",
-            spot = "A-15",
-            timeRange = "09:00 - 17:00"
-        ),
-        Reservation(
-            plate = "X22789",
-            status = "active",
-            statusColor = Color(0xFF16C172),
-            price = "$5",
-            customerName = "Taylor Swift",
-            spot = "B-22",
-            timeRange = "10:30 - 14:30"
-        ),
-        Reservation(
-            plate = "D15456",
-            status = "upcoming",
-            statusColor = Color(0xFF246BFD),
-            price = "$10",
-            customerName = "Lebron James",
-            spot = "C-08",
-            timeRange = "14:00 - 18:00"
-        ),
-        Reservation(
-            plate = "G00789",
-            status = "active",
-            statusColor = Color(0xFF16C172),
-            price = "$8",
-            customerName = "Lionel Messi",
-            spot = "A-03",
-            timeRange = "11:00 - 15:00"
-        )
-    )
+    
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+    val api = remember {
+        RetrofitClient.getClient { sessionManager.getAccessToken() }
+            .create(ApiService::class.java)
+    }
+    
+    var reservations by remember { mutableStateOf<List<ReservationDisplay>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
+    
+    LaunchedEffect(Unit) {
+        scope.launch {
+            try {
+                val adminResp = api.getMyAdmin()
+                if (adminResp.isSuccessful && adminResp.body() != null) {
+                    val adminUuid = adminResp.body()!!.uuid
+                    val parkingResp = api.listParkings()
+                    if (parkingResp.isSuccessful && parkingResp.body() != null) {
+                        val allParkings = parkingResp.body()!!
+                        val parking = allParkings.firstOrNull { it.owner_uuid == adminUuid }
+                            ?: allParkings.firstOrNull()
+                        
+                        if (parking != null) {
+                            val reservationsResp = api.listReservations()
+                            if (reservationsResp.isSuccessful && reservationsResp.body() != null) {
+                                val allReservations = reservationsResp.body()!!
+                                val parkingReservations = allReservations.filter { it.parking_id == parking.name }
+                                
+                                // Get all people to map UUIDs to names
+                                val peopleResp = api.listPeople()
+                                val peopleMap = if (peopleResp.isSuccessful && peopleResp.body() != null) {
+                                    peopleResp.body()!!.associateBy { it.uuid }
+                                } else emptyMap()
+                                
+                                // Get all users to get names
+                                val usersMap = mutableMapOf<String, String>()
+                                // Note: We don't have a direct API to get user by UUID, so we'll use plate number as identifier
+                                
+                                reservations = parkingReservations.map { res ->
+                                    val person = peopleMap[res.people_uuid]
+                                    val plateNumber = person?.plate_number?.toString() ?: "N/A"
+                                    
+                                    // Parse time
+                                    val timeFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+                                    val checkoutFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+                                    val displayFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+                                    
+                                    val startTime = try {
+                                        timeFormat.parse(res.time) ?: Date()
+                                    } catch (e: Exception) { Date() }
+                                    
+                                    val endTime = if (res.checkout_time != null) {
+                                        try {
+                                            checkoutFormat.parse(res.checkout_time) ?: Date()
+                                        } catch (e: Exception) { Date() }
+                                    } else {
+                                        val cal = Calendar.getInstance()
+                                        cal.time = startTime
+                                        cal.add(Calendar.HOUR, 2) // Default 2 hours if no checkout
+                                        cal.time
+                                    }
+                                    
+                                    val timeRange = "${displayFormat.format(startTime)} - ${displayFormat.format(endTime)}"
+                                    
+                                    val statusColor = when (res.status.lowercase()) {
+                                        "pending", "active" -> Color(0xFF16C172)
+                                        "upcoming" -> Color(0xFF246BFD)
+                                        else -> Color.Gray
+                                    }
+                                    
+                                    ReservationDisplay(
+                                        plate = plateNumber,
+                                        status = res.status.lowercase(),
+                                        statusColor = statusColor,
+                                        price = String.format("$%.2f", res.price),
+                                        customerName = "Customer ${plateNumber}", // Using plate as identifier
+                                        spot = "Spot ${res.id}", // Using reservation ID as spot
+                                        timeRange = timeRange
+                                    )
+                                }
+                            }
+                        }
+                        isLoading = false
+                    }
+                }
+            } catch (e: Exception) {
+                isLoading = false
+            }
+        }
+    }
 
     androidx.compose.material3.Scaffold(
         bottomBar = {
-            AdminReservationsBottomBar(
+            AdminBottomNavBar(
                 activeTab = activeTab,
                 navController = navController,
                 onTabChange = { activeTab = it }
@@ -121,9 +182,15 @@ fun AdminReservationsScreen(navController: NavController) {
 
                 Spacer(Modifier.height(16.dp))
 
-                reservations.forEach { res ->
-                    ReservationCard(reservation = res)
-                    Spacer(Modifier.height(12.dp))
+                if (isLoading) {
+                    CircularProgressIndicator()
+                } else if (reservations.isEmpty()) {
+                    Text("No reservations found", color = Color.Gray)
+                } else {
+                    reservations.forEach { res ->
+                        ReservationCard(reservation = res)
+                        Spacer(Modifier.height(12.dp))
+                    }
                 }
 
                 Spacer(Modifier.height(80.dp))
@@ -136,7 +203,7 @@ fun AdminReservationsScreen(navController: NavController) {
 // RESERVATION CARD
 // ---------------------------------------------
 @Composable
-fun ReservationCard(reservation: Reservation) {
+fun ReservationCard(reservation: ReservationDisplay) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -230,61 +297,7 @@ fun ReservationCard(reservation: Reservation) {
     }
 }
 
-// ---------------------------------------------
-// BOTTOM NAV BAR (MATCHING ADMIN STYLE)
-// ---------------------------------------------
-@Composable
-fun AdminReservationsBottomBar(
-    activeTab: String,
-    navController: NavController,
-    onTabChange: (String) -> Unit
-) {
-    val navItems = listOf(
-        Triple("dashboard", "Dashboard", Icons.Default.BarChart),
-        Triple("reservations", "Reservations", Icons.Default.AccessTime),
-        Triple("finances", "Finances", Icons.Default.CreditCard),
-        Triple("adjustments", "Adjustments", Icons.Default.Settings)
-    )
-
-    Surface(tonalElevation = 3.dp, shadowElevation = 3.dp) {
-        Row(
-            modifier = Modifier
-                .padding(vertical = 8.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            navItems.forEach { (key, label, icon) ->
-                val selected = key == activeTab
-                val color =
-                    if (selected) MaterialTheme.colorScheme.onSurface else Color.Gray
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clickable {
-                            onTabChange(key)
-                            when (key) {
-                                "dashboard" -> navController.navigate("admin")
-                                "reservations" -> navController.navigate("admin_reservations")
-                                "finances" -> navController.navigate("financial_reports")
-                                "adjustments" -> navController.navigate("admin_settings")
-                            }
-                        }
-                        .padding(4.dp)
-                ) {
-                    androidx.compose.material3.Icon(
-                        icon,
-                        contentDescription = label,
-                        tint = color,
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Text(label, color = color, fontSize = 12.sp)
-                }
-            }
-        }
-    }
-}
+// Old AdminReservationsBottomBar removed - using shared AdminBottomNavBar
 
 // PREVIEW (optional)
 @Preview(showBackground = true, showSystemUi = true)

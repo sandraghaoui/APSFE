@@ -11,10 +11,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.compose.ui.unit.sp
+import com.example.aps.api.ApiService
+import com.example.aps.api.ParkingRead
+import com.example.aps.api.RetrofitClient
+import com.example.aps.api.SessionManager
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 /**
  * SETTINGS CARD
@@ -25,6 +33,7 @@ fun SettingsCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Surface(
+        color = Color.White,
         shape = RoundedCornerShape(16.dp),
         tonalElevation = 2.dp,
         shadowElevation = 1.dp,
@@ -55,56 +64,7 @@ fun EditButton(onClick: () -> Unit = {}) {
     }
 }
 
-/**
- * BOTTOM NAVIGATION
- */
-@Composable
-fun AdminSettingsBottomBar(
-    activeTab: String,
-    navController: NavController,
-    onTabChange: (String) -> Unit
-) {
-    val navItems = listOf(
-        Triple("dashboard", "Dashboard", Icons.Default.BarChart),
-        Triple("reservations", "Reservations", Icons.Default.AccessTime),
-        Triple("finances", "Finances", Icons.Default.CreditCard),
-        Triple("adjustments", "Adjustments", Icons.Default.Settings)
-    )
-
-    Surface(tonalElevation = 3.dp, shadowElevation = 3.dp) {
-        Row(
-            modifier = Modifier
-                .padding(vertical = 8.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            navItems.forEach { (key, label, icon) ->
-                val selected = key == activeTab
-                val color =
-                    if (selected) MaterialTheme.colorScheme.onSurface else Color.Gray
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clickable {
-                            onTabChange(key)
-                            when (key) {
-                                "dashboard" -> navController.navigate("admin")
-                                "adjustments" -> navController.navigate("admin_settings")
-                                "finances" -> navController.navigate("financial_reports")
-                                "reservations" -> navController.navigate("admin_reservations")
-                            }
-                        }
-                        .padding(4.dp)
-                ) {
-                    Icon(icon, label, tint = color, modifier = Modifier.size(22.dp))
-                    Text(label, color = color, fontSize = 12.sp)
-                }
-            }
-        }
-    }
-}
+// Old AdminSettingsBottomBar removed - using shared AdminBottomNavBar
 
 /**
  * MAIN SCREEN
@@ -113,10 +73,41 @@ fun AdminSettingsBottomBar(
 fun AdminSettingsScreen(navController: NavController) {
 
     var activeTab by remember { mutableStateOf("adjustments") }
+    
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+    val api = remember {
+        RetrofitClient.getClient { sessionManager.getAccessToken() }
+            .create(ApiService::class.java)
+    }
+    
+    var parking by remember { mutableStateOf<ParkingRead?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
+    
+    LaunchedEffect(Unit) {
+        scope.launch {
+            try {
+                val adminResp = api.getMyAdmin()
+                if (adminResp.isSuccessful && adminResp.body() != null) {
+                    val adminUuid = adminResp.body()!!.uuid
+                    val parkingResp = api.listParkings()
+                    if (parkingResp.isSuccessful && parkingResp.body() != null) {
+                        val allParkings = parkingResp.body()!!
+                        parking = allParkings.firstOrNull { it.owner_uuid == adminUuid }
+                            ?: allParkings.firstOrNull()
+                        isLoading = false
+                    }
+                }
+            } catch (e: Exception) {
+                isLoading = false
+            }
+        }
+    }
 
     Scaffold(
         bottomBar = {
-            AdminSettingsBottomBar(
+            AdminBottomNavBar(
                 activeTab = activeTab,
                 navController = navController,
                 onTabChange = { activeTab = it }
@@ -128,14 +119,14 @@ fun AdminSettingsScreen(navController: NavController) {
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
+                .background(Color.White)
         ) {
 
             // HEADER
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
+                    .background(Color.White)
                     .padding(20.dp)
             ) {
                 Text(
@@ -146,12 +137,12 @@ fun AdminSettingsScreen(navController: NavController) {
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        "Samer's Parking",
+                        parking?.name ?: "Loading...",
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleLarge
                     )
                     Text(
-                        "Wednesday, October 1, 2025",
+                        SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault()).format(Date()),
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         style = MaterialTheme.typography.bodySmall
                     )
@@ -179,11 +170,16 @@ fun AdminSettingsScreen(navController: NavController) {
                             Spacer(Modifier.height(6.dp))
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("247/300", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    if (parking != null) "${parking!!.current_capacity}/${parking!!.maximum_capacity}"
+                                    else "Loading...",
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                                 Spacer(Modifier.width(12.dp))
 
                                 Surface(
-                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    color = Color.White,
                                     shape = RoundedCornerShape(10.dp),
                                     modifier = Modifier.size(42.dp)
                                 ) {
@@ -193,7 +189,12 @@ fun AdminSettingsScreen(navController: NavController) {
                                 }
                             }
 
-                            Text("+12 from yesterday", color = Color(0xFF22C55E))
+                            Text(
+                                if (parking != null && parking!!.maximum_capacity > 0) {
+                                    "${((parking!!.current_capacity.toFloat() / parking!!.maximum_capacity) * 100).toInt()}% full"
+                                } else "N/A",
+                                color = Color(0xFF22C55E)
+                            )
                         }
                         EditButton()
                     }
@@ -210,11 +211,16 @@ fun AdminSettingsScreen(navController: NavController) {
                         Column {
                             Text("Price/Hour", color = Color.Gray)
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("$5", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    if (parking != null) String.format("$%.2f", parking!!.price_per_hour)
+                                    else "Loading...",
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                                 Spacer(Modifier.width(12.dp))
 
                                 Surface(
-                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    color = Color.White,
                                     shape = RoundedCornerShape(10.dp),
                                     modifier = Modifier.size(42.dp)
                                 ) {
