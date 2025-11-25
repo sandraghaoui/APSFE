@@ -22,7 +22,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -48,6 +52,18 @@ fun LoyaltyScreen(
     val uiState by viewModel.state.collectAsState()
     val bottomBarHeight = 70.dp
 
+    // Refresh data when navigating back to this screen
+    // Using the current back stack entry as the key ensures this only runs
+    // when we navigate TO this screen, not on every recomposition
+    val currentEntry = navController.currentBackStackEntry
+    LaunchedEffect(currentEntry) {
+        // Only refresh if this isn't the very first time (init already loaded)
+        if (viewModel.hasLoadedOnce) {
+            viewModel.refresh()
+        }
+    }
+
+    // Show loading or error states with better UI
     when {
         uiState.isLoading -> {
             Box(
@@ -56,7 +72,21 @@ fun LoyaltyScreen(
                     .background(Color(0xFFF6F7F8)),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Loading loyalty data...")
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        color = Color(0xFF30493F),
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Loading your loyalty points...",
+                        color = Color(0xFF666666),
+                        fontSize = 14.sp
+                    )
+                }
             }
             return
         }
@@ -68,7 +98,38 @@ fun LoyaltyScreen(
                     .background(Color(0xFFF6F7F8)),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Error loading loyalty: ${uiState.error}")
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(32.dp)
+                ) {
+                    Text(
+                        text = "⚠️",
+                        fontSize = 48.sp
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Unable to load loyalty data",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF333333)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = uiState.error ?: "Unknown error",
+                        fontSize = 14.sp,
+                        color = Color(0xFF666666),
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    androidx.compose.material3.Button(
+                        onClick = { viewModel.refresh() },
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF30493F)
+                        )
+                    ) {
+                        Text("Retry", color = Color.White)
+                    }
+                }
             }
             return
         }
@@ -84,13 +145,18 @@ fun LoyaltyScreen(
             .fillMaxSize()
             .background(Color(0xFFF6F7F8))
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFF6F7F8))
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
+        AnimatedVisibility(
+            visible = !uiState.isLoading && uiState.error == null,
+            enter = fadeIn(),
+            exit = fadeOut()
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFFF6F7F8))
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp)
+            ) {
 
             Spacer(Modifier.height(24.dp))
 
@@ -255,6 +321,7 @@ fun LoyaltyScreen(
             )
 
             Spacer(Modifier.height(90.dp))
+            }
         }
 
         // ---------- BOTTOM NAV ----------

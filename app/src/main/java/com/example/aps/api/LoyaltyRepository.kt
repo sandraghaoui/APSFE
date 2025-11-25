@@ -19,13 +19,17 @@ class LoyaltyRepository(private val supabase: SupabaseClient) {
      */
     suspend fun getOrCreatePeople(userId: String): PeopleRead {
 
-        // 1) Try to find existing row
+        // 1) Try to find existing row using a proper query filter
         val peopleList = supabase
             .from("people")
-            .select()
+            .select {
+                filter {
+                    eq("uuid", userId)
+                }
+            }
             .decodeList<PeopleRead>()
 
-        val existing = peopleList.firstOrNull { it.uuid == userId }
+        val existing = peopleList.firstOrNull()
         if (existing != null) return existing
 
         // 2) Create new row with default values
