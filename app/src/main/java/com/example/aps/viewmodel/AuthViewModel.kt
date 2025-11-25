@@ -14,8 +14,8 @@ import kotlinx.coroutines.withContext
 class AuthViewModel : ViewModel() {
 
     // ============================================================
-    // REGISTER USER
-    // ============================================================
+// REGISTER USER - SIMPLIFIED
+// ============================================================
     fun registerUser(
         context: Context,
         fullName: String,
@@ -29,29 +29,26 @@ class AuthViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 Log.e("REGISTER_DEBUG", "========================================")
-                Log.e("REGISTER_DEBUG", "REGISTER FUNCTION CALLED!!!")
-                Log.e("REGISTER_DEBUG", "Email: $email, Name: $fullName")
-                Log.e("REGISTER_DEBUG", "========================================")
-
-                val sessionManager = SessionManager(context)
-                val supabaseAuth = SupabaseClientProvider.client.auth
+                Log.e("REGISTER_DEBUG", "Starting registration for: $email")
 
                 val userEmail = email.trim()
                 val userPassword = password.trim()
 
+                // Store pending data FIRST
                 val userPrefs = context.getSharedPreferences("user_registration", Context.MODE_PRIVATE)
                 userPrefs.edit().apply {
-                    putString("pending_fullName", fullName)
-                    putString("pending_phone", phone)
-                    putString("pending_plate", plate)
+                    putString("pending_fullName", fullName.trim())
+                    putString("pending_phone", phone.trim())
+                    putString("pending_plate", plate.trim())
                     putString("pending_email", userEmail)
                     putBoolean("profile_created", false)
                     apply()
                 }
 
-                Log.e("REGISTER_DEBUG", "Stored pending registration data in SharedPreferences")
+                Log.e("REGISTER_DEBUG", "Stored pending data: $fullName, $phone, $plate")
 
-                // SUPABASE SIGN-UP
+                // Supabase signup
+                val supabaseAuth = SupabaseClientProvider.client.auth
                 supabaseAuth.signUpWith(Email) {
                     this.email = userEmail
                     this.password = userPassword
@@ -59,94 +56,32 @@ class AuthViewModel : ViewModel() {
 
                 Log.e("REGISTER_DEBUG", "Supabase signup completed")
 
-                val session = supabaseAuth.currentSessionOrNull()
-                Log.e("REGISTER_DEBUG", "Session after signup: ${session != null}")
-
-                if (session == null) {
-                    Log.e("REGISTER_DEBUG", "Email confirmation required - data already stored")
-                    withContext(Dispatchers.Main) { onSuccess() }
-                    return@launch
+                withContext(Dispatchers.Main) {
+                    onSuccess()
                 }
-
-                val uuid = session.user?.id
-                val token = session.accessToken
-
-                if (uuid == null || token == null) {
-                    Log.e("REGISTER_DEBUG", "ERROR: UUID or token is null")
-                    withContext(Dispatchers.Main) {
-                        onError("Authentication failed: Invalid session")
-                    }
-                    return@launch
-                }
-
-                sessionManager.saveAccessToken(token)
-
-                val api = RetrofitClient.getClient { sessionManager.getAccessToken() }
-                    .create(ApiService::class.java)
-
-                val parts = fullName.trim().split(" ", limit = 2)
-                val first = parts.firstOrNull() ?: ""
-                val last = parts.getOrNull(1) ?: ""
-
-                val userResp = api.createOrUpdateMyProfile(
-                    UserCreate(
-                        first_name = first,
-                        last_name = last,
-                        phone_number = phone,
-                        email = userEmail,
-                        admin = false
-                    )
-                )
-
-                if (!userResp.isSuccessful) {
-                    withContext(Dispatchers.Main) {
-                        onError("FastAPI error /users/me: ${userResp.code()}")
-                    }
-                    return@launch
-                }
-
-                val peopleResp = api.createPeople(
-                    PeopleCreate(
-                        plate_number = plate.toIntOrNull() ?: 0,
-                        loyalty_points = 0,
-                        balance = 0.0
-                    )
-                )
-
-                if (!peopleResp.isSuccessful) {
-                    withContext(Dispatchers.Main) {
-                        onError("FastAPI error /people: ${peopleResp.code()}")
-                    }
-                    return@launch
-                }
-
-                userPrefs.edit().putBoolean("profile_created", true).apply()
-
-                withContext(Dispatchers.Main) { onSuccess() }
 
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) { onError(e.message ?: "Unknown error") }
+                Log.e("REGISTER_DEBUG", "Registration error: ${e.message}")
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    onError("Registration failed: ${e.message}")
+                }
             }
         }
     }
 
-
-
-
     // ============================================================
-    // UPDATED LOGIN USER
-    // ============================================================
+// LOGIN USER - CORRECTED
+// ============================================================
     fun loginUser(
         context: Context,
         email: String,
         password: String,
-        onSuccess: (Boolean) -> Unit,   // <-- ADMIN FLAG HERE
+        onSuccess: (Boolean) -> Unit,
         onError: (String) -> Unit
     ) {
         Log.e("LOGIN_DEBUG", "========================================")
-        Log.e("LOGIN_DEBUG", "LOGIN FUNCTION CALLED!!!")
-        Log.e("LOGIN_DEBUG", "Email: $email")
-        Log.e("LOGIN_DEBUG", "========================================")
+        Log.e("LOGIN_DEBUG", "Starting login for: $email")
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -157,6 +92,7 @@ class AuthViewModel : ViewModel() {
                 val userPassword = password.trim()
 
                 // 1) SUPABASE LOGIN
+                Log.e("LOGIN_DEBUG", "Attempting Supabase login...")
                 supabaseAuth.signInWith(Email) {
                     this.email = userEmail
                     this.password = userPassword
@@ -164,43 +100,173 @@ class AuthViewModel : ViewModel() {
 
                 val session = supabaseAuth.currentSessionOrNull()
                 val token = session?.accessToken
+                val uuid = session?.user?.id
 
-                if (session == null || token == null) {
+                Log.e("LOGIN_DEBUG", "Session: ${session != null}, Token: ${token != null}, UUID: $uuid")
+
+                if (session == null || token == null || uuid == null) {
                     withContext(Dispatchers.Main) {
-                        onError("Invalid email or password")
+                        onError("Login failed: Invalid session")
                     }
                     return@launch
                 }
 
+                // Save token
                 sessionManager.saveAccessToken(token)
+                Log.e("LOGIN_DEBUG", "Token saved")
 
                 // 2) Create API client
                 val api = RetrofitClient.getClient { sessionManager.getAccessToken() }
                     .create(ApiService::class.java)
 
-                // 3) Fetch FastAPI user profile (to check admin)
-                val userResp = api.getMyProfile()
+                // 3) Check if this is first login
+                val userPrefs = context.getSharedPreferences("user_registration", Context.MODE_PRIVATE)
+                val profileCreated = userPrefs.getBoolean("profile_created", false)
 
+                Log.e("LOGIN_DEBUG", "Profile created flag: $profileCreated")
+
+                if (!profileCreated) {
+                    Log.e("LOGIN_DEBUG", "=== FIRST LOGIN - CREATING PROFILES ===")
+
+                    // Get pending registration data
+                    val pendingName = userPrefs.getString("pending_fullName", "") ?: ""
+                    val pendingPhone = userPrefs.getString("pending_phone", "") ?: ""
+                    val pendingPlate = userPrefs.getString("pending_plate", "0") ?: "0"
+                    val pendingEmail = userPrefs.getString("pending_email", "") ?: userEmail
+
+                    Log.e("LOGIN_DEBUG", "Pending data: Name='$pendingName', Phone='$pendingPhone', Plate='$pendingPlate'")
+
+                    if (pendingName.isEmpty()) {
+                        Log.e("LOGIN_DEBUG", "ERROR: No pending registration data found")
+                        withContext(Dispatchers.Main) {
+                            onError("Registration data not found. Please sign up again.")
+                        }
+                        return@launch
+                    }
+
+                    // Parse name
+                    val parts = pendingName.split(" ", limit = 2)
+                    val firstName = parts.firstOrNull() ?: ""
+                    val lastName = parts.getOrNull(1) ?: ""
+
+                    Log.e("LOGIN_DEBUG", "Creating user profile: $firstName $lastName")
+
+                    // Create User Profile
+                    try {
+                        val userResp = api.createOrUpdateMyProfile(
+                            UserCreate(
+                                first_name = firstName,
+                                last_name = lastName,
+                                phone_number = pendingPhone,
+                                email = pendingEmail,
+                                admin = false
+                            )
+                        )
+
+                        Log.e("LOGIN_DEBUG", "User API response: ${userResp.code()}")
+
+                        if (!userResp.isSuccessful) {
+                            val errorBody = userResp.errorBody()?.string()
+                            Log.e("LOGIN_DEBUG", "User profile error: $errorBody")
+
+                            // If 409, profile already exists, that's OK
+                            if (userResp.code() != 409) {
+                                withContext(Dispatchers.Main) {
+                                    onError("Failed to create user profile: ${userResp.code()}")
+                                }
+                                return@launch
+                            } else {
+                                Log.e("LOGIN_DEBUG", "User profile already exists (409), continuing...")
+                            }
+                        } else {
+                            Log.e("LOGIN_DEBUG", "✓ User profile created successfully")
+                        }
+
+                    } catch (e: Exception) {
+                        Log.e("LOGIN_DEBUG", "Exception creating user profile: ${e.message}")
+                        e.printStackTrace()
+                        withContext(Dispatchers.Main) {
+                            onError("Failed to create user profile: ${e.message}")
+                        }
+                        return@launch
+                    }
+
+                    // Create People Profile
+                    try {
+                        val plateNumber = pendingPlate.toIntOrNull() ?: 0
+                        Log.e("LOGIN_DEBUG", "Creating people profile with plate: $plateNumber")
+
+                        val peopleResp = api.createPeople(
+                            PeopleCreate(
+                                plate_number = plateNumber,
+                                loyalty_points = 0,
+                                balance = 0.0
+                            )
+                        )
+
+                        Log.e("LOGIN_DEBUG", "People API response: ${peopleResp.code()}")
+
+                        if (!peopleResp.isSuccessful) {
+                            val errorBody = peopleResp.errorBody()?.string()
+                            Log.e("LOGIN_DEBUG", "People profile error: $errorBody")
+
+                            // If 409, profile already exists, that's OK
+                            if (peopleResp.code() != 409) {
+                                withContext(Dispatchers.Main) {
+                                    onError("Failed to create people profile: ${peopleResp.code()}")
+                                }
+                                return@launch
+                            } else {
+                                Log.e("LOGIN_DEBUG", "People profile already exists (409), continuing...")
+                            }
+                        } else {
+                            Log.e("LOGIN_DEBUG", "✓ People profile created successfully")
+                        }
+
+                    } catch (e: Exception) {
+                        Log.e("LOGIN_DEBUG", "Exception creating people profile: ${e.message}")
+                        e.printStackTrace()
+                        withContext(Dispatchers.Main) {
+                            onError("Failed to create people profile: ${e.message}")
+                        }
+                        return@launch
+                    }
+
+                    // Mark profile as created
+                    userPrefs.edit().putBoolean("profile_created", true).apply()
+                    Log.e("LOGIN_DEBUG", "✓ Profile created flag set to true")
+                }
+
+                // 4) Fetch user profile to check admin status
+                Log.e("LOGIN_DEBUG", "Fetching user profile for admin check...")
+
+                val userResp = api.getMyProfile()
                 if (!userResp.isSuccessful || userResp.body() == null) {
+                    Log.e("LOGIN_DEBUG", "Failed to fetch profile: ${userResp.code()}")
                     withContext(Dispatchers.Main) {
-                        onError("Failed to load profile")
+                        onError("Failed to load profile: ${userResp.code()}")
                     }
                     return@launch
                 }
 
                 val user = userResp.body()!!
-                val isAdmin = user.admin   // <-- THIS IS THE FLAG
+                val isAdmin = user.admin
 
-                Log.e("LOGIN_DEBUG", "User is admin: $isAdmin")
+                Log.e("LOGIN_DEBUG", "✓✓✓ LOGIN SUCCESSFUL ✓✓✓")
+                Log.e("LOGIN_DEBUG", "User: ${user.first_name} ${user.last_name}")
+                Log.e("LOGIN_DEBUG", "Admin: $isAdmin")
+                Log.e("LOGIN_DEBUG", "========================================")
 
-                // 4) SUCCESS — return admin bool
+                // 5) SUCCESS
                 withContext(Dispatchers.Main) {
                     onSuccess(isAdmin)
                 }
 
             } catch (e: Exception) {
+                Log.e("LOGIN_DEBUG", "LOGIN EXCEPTION: ${e.message}")
+                e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    onError(e.message ?: "Login failed")
+                    onError("Login failed: ${e.message}")
                 }
             }
         }
