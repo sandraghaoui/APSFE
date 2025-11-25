@@ -1,6 +1,5 @@
 package com.example.aps.ui.screens
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -16,7 +15,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -37,9 +35,7 @@ data class ReservationDisplay(
     val price: String,
     val customerName: String,
     val spot: String,
-    val timeRange: String,
-    val onCheckIn: () -> Unit,
-    val onCheckOut: () -> Unit
+    val timeRange: String
 )
 
 @Composable
@@ -55,6 +51,7 @@ fun AdminReservationsScreen(navController: NavController) {
     }
 
     var reservations by remember { mutableStateOf<List<ReservationDisplay>>(emptyList()) }
+    var rawReservations by remember { mutableStateOf<List<ReservationRead>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -64,6 +61,7 @@ fun AdminReservationsScreen(navController: NavController) {
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
+        if (result.resultCode != android.app.Activity.RESULT_OK) return@rememberLauncherForActivityResult
         val data = result.data ?: return@rememberLauncherForActivityResult
 
         val matched = data.getBooleanExtra(CameraActivity.EXTRA_MATCHED, false)
@@ -74,32 +72,50 @@ fun AdminReservationsScreen(navController: NavController) {
 
         scope.launch {
             try {
-                val body = if (mode == "checkout") {
-                    val nowIso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-                        .format(Date())
-                    ReservationBase("Settled", nowIso)
-                } else {
-                    ReservationBase("Active", null)
+                // Find original reservation
+                val entity = rawReservations.firstOrNull { it.id == reservationId }
+                    ?: return@launch
+
+                val updatedStatus = when (mode.lowercase()) {
+                    "checkout" -> "Settled"
+                    else -> "Active"
                 }
+
+                val iso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+                val updatedCheckoutTime: String? = when (mode.lowercase()) {
+                    "checkout" -> iso.format(Date())
+                    else -> entity.checkout_time
+                }
+
+                // Build PATCH body (partial update, but we send full for safety)
+                val body = ReservationBase(
+                    parking_id = entity.parking_id,
+                    time = entity.time,
+                    status = updatedStatus,
+                    checkout_time = updatedCheckoutTime,
+                    price = entity.price
+                )
 
                 val resp = api.updateReservation(reservationId, body)
                 if (!resp.isSuccessful) {
                     errorMessage = "Update failed: ${resp.code()}"
                 } else {
-                    loadReservations(api, sessionManager, context) {
-                        reservations = it
+                    loadReservations(api, sessionManager, context) { displayList, rawList ->
+                        reservations = displayList
+                        rawReservations = rawList
                     }
                 }
             } catch (e: Exception) {
-                errorMessage = e.message
+                errorMessage = e.message ?: "Unknown error"
             }
         }
     }
 
     // FIRST LOAD
     LaunchedEffect(Unit) {
-        loadReservations(api, sessionManager, context) {
-            reservations = it
+        loadReservations(api, sessionManager, context) { displayList, rawList ->
+            reservations = displayList
+            rawReservations = rawList
             isLoading = false
         }
     }
@@ -138,7 +154,25 @@ fun AdminReservationsScreen(navController: NavController) {
                     reservations.isEmpty() -> Text("No reservations found")
                     else -> {
                         reservations.forEach { res ->
-                            ReservationCard(res)
+                            ReservationCard(
+                                r = res,
+                                onCheckIn = {
+                                    val intent = Intent(context, CameraActivity::class.java).apply {
+                                        putExtra(CameraActivity.EXTRA_EXPECTED_PLATE, res.plate)
+                                        putExtra(CameraActivity.EXTRA_RESERVATION_ID, res.id)
+                                        putExtra(CameraActivity.EXTRA_MODE, "checkin")
+                                    }
+                                    cameraLauncher.launch(intent)
+                                },
+                                onCheckOut = {
+                                    val intent = Intent(context, CameraActivity::class.java).apply {
+                                        putExtra(CameraActivity.EXTRA_EXPECTED_PLATE, res.plate)
+                                        putExtra(CameraActivity.EXTRA_RESERVATION_ID, res.id)
+                                        putExtra(CameraActivity.EXTRA_MODE, "checkout")
+                                    }
+                                    cameraLauncher.launch(intent)
+                                }
+                            )
                             Spacer(Modifier.height(12.dp))
                         }
                     }
@@ -150,37 +184,42 @@ fun AdminReservationsScreen(navController: NavController) {
     }
 }
 
+/**
+ * Loads reservations + related people info, returns:
+ *  - display list for UI
+ *  - raw list (ReservationRead) for PATCH body building
+ */
 suspend fun loadReservations(
     api: ApiService,
     sessionManager: SessionManager,
     context: Context,
-    onResult: (List<ReservationDisplay>) -> Unit
+    onResult: (List<ReservationDisplay>, List<ReservationRead>) -> Unit
 ) {
     try {
         // 1. GET ADMIN
         val adminResp = api.getMyAdmin()
         if (!adminResp.isSuccessful || adminResp.body() == null) {
-            onResult(emptyList()); return
+            onResult(emptyList(), emptyList()); return
         }
         val adminUuid = adminResp.body()!!.uuid
 
         // 2. GET PARKING
         val parkingResp = api.listParkings()
         if (!parkingResp.isSuccessful || parkingResp.body() == null) {
-            onResult(emptyList()); return
+            onResult(emptyList(), emptyList()); return
         }
         val parking = parkingResp.body()!!
             .firstOrNull { it.owner_uuid == adminUuid }
             ?: parkingResp.body()!!.firstOrNull()
 
         if (parking == null) {
-            onResult(emptyList()); return
+            onResult(emptyList(), emptyList()); return
         }
 
         // 3. RESERVATIONS
         val resResp = api.listReservations()
         if (!resResp.isSuccessful || resResp.body() == null) {
-            onResult(emptyList()); return
+            onResult(emptyList(), emptyList()); return
         }
         val reservations = resResp.body()!!
             .filter { it.parking_id == parking.name }
@@ -192,18 +231,28 @@ suspend fun loadReservations(
         else emptyMap()
 
         val iso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-        val disp = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val dispFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
 
-        val result = reservations.map { res ->
+        val displayList = reservations.map { res ->
             val person = peopleMap[res.people_uuid]
             val plate = person?.plate_number?.toString() ?: "N/A"
 
-            val start = iso.parse(res.time) ?: Date()
-            val end = if (res.checkout_time != null)
-                (iso.parse(res.checkout_time) ?: Date())
-            else Date(start.time + 2 * 60 * 60 * 1000)
+            val startDate: Date = try {
+                iso.parse(res.time)
+            } catch (_: Exception) {
+                Date()
+            }
 
-            val timeRange = "${disp.format(start)} - ${disp.format(end)}"
+            val endDate: Date = try {
+                if (res.checkout_time != null)
+                    iso.parse(res.checkout_time)
+                else
+                    Date(startDate.time + 2 * 60 * 60 * 1000)
+            } catch (_: Exception) {
+                Date(startDate.time + 2 * 60 * 60 * 1000)
+            }
+
+            val timeRange = "${dispFmt.format(startDate)} - ${dispFmt.format(endDate)}"
 
             val bubbleColor = when (res.status.lowercase()) {
                 "pending" -> Color.Gray
@@ -220,37 +269,23 @@ suspend fun loadReservations(
                 price = "$${res.price}",
                 customerName = "Customer $plate",
                 spot = "Spot ${res.id}",
-                timeRange = timeRange,
-
-                onCheckIn = {
-                    val intent = Intent(context, CameraActivity::class.java).apply {
-                        putExtra(CameraActivity.EXTRA_EXPECTED_PLATE, plate)
-                        putExtra(CameraActivity.EXTRA_RESERVATION_ID, res.id)
-                        putExtra(CameraActivity.EXTRA_MODE, "checkin")
-                    }
-                    if (context is Activity) context.startActivity(intent)
-                },
-
-                onCheckOut = {
-                    val intent = Intent(context, CameraActivity::class.java).apply {
-                        putExtra(CameraActivity.EXTRA_EXPECTED_PLATE, plate)
-                        putExtra(CameraActivity.EXTRA_RESERVATION_ID, res.id)
-                        putExtra(CameraActivity.EXTRA_MODE, "checkout")
-                    }
-                    if (context is Activity) context.startActivity(intent)
-                }
+                timeRange = timeRange
             )
         }
 
-        onResult(result)
+        onResult(displayList, reservations)
 
     } catch (e: Exception) {
-        onResult(emptyList())
+        onResult(emptyList(), emptyList())
     }
 }
 
 @Composable
-fun ReservationCard(r: ReservationDisplay) {
+fun ReservationCard(
+    r: ReservationDisplay,
+    onCheckIn: () -> Unit,
+    onCheckOut: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -319,7 +354,7 @@ fun ReservationCard(r: ReservationDisplay) {
                         Box(
                             Modifier
                                 .background(Color(0xFF16C172), RoundedCornerShape(12.dp))
-                                .clickable { r.onCheckIn() }
+                                .clickable { onCheckIn() }
                                 .padding(horizontal = 16.dp, vertical = 6.dp)
                         ) {
                             Text("Check In", color = Color.White)
@@ -331,7 +366,7 @@ fun ReservationCard(r: ReservationDisplay) {
                         Box(
                             Modifier
                                 .background(Color(0xFFFF4444), RoundedCornerShape(12.dp))
-                                .clickable { r.onCheckOut() }
+                                .clickable { onCheckOut() }
                                 .padding(horizontal = 16.dp, vertical = 6.dp)
                         ) {
                             Text("Check Out", color = Color.White)

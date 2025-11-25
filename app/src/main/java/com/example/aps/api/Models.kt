@@ -89,6 +89,7 @@ data class ParkingUpdate(
     val close_time: String? = null,
     val location: String? = null
 )
+
 @Serializable
 data class ParkingRead(
     val name: String,
@@ -125,10 +126,25 @@ data class ReservationRead(
     val price: Double
 )
 
+/**
+ * MUST match Python ReservationBase:
+ *
+ * class ReservationBase(BaseModel):
+ *     parking_id: str
+ *     time: datetime
+ *     status: str = "Pending"
+ *     checkout_time: Optional[datetime] = None
+ *     price: float = 0.0
+ *
+ * We make all fields nullable for PATCH (partial update).
+ */
 @Serializable
 data class ReservationBase(
+    val parking_id: String? = null,
+    val time: String? = null,
     val status: String? = null,
-    val checkout_time: String? = null
+    val checkout_time: String? = null,
+    val price: Double? = null
 )
 
 

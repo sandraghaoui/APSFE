@@ -5,6 +5,7 @@ import retrofit2.http.*
 
 interface ApiService {
 
+    // USERS
     @POST("users/me")
     suspend fun createOrUpdateMyProfile(@Body body: UserCreate): Response<UserRead>
 
@@ -72,7 +73,8 @@ interface ApiService {
     @GET("reservations")
     suspend fun listReservations(): Response<List<ReservationRead>>
 
-    @PATCH("reservations/{id}")
+    // ❗ FIXED — use POST fallback route to avoid Vercel 405
+    @POST("reservations/{id}/update")
     suspend fun updateReservation(
         @Path("id") id: Int,
         @Body body: ReservationBase
