@@ -11,16 +11,23 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.aps.R
+import com.example.aps.api.ApiService
+import com.example.aps.api.RetrofitClient
+import com.example.aps.api.SessionManager
+import com.example.aps.viewmodel.AdminDashboardViewModel
+import com.example.aps.viewmodel.DashboardUiState
 
 // ----------------------------------------------------------------------
 //  ADMIN DASHBOARD MAIN SCREEN
@@ -29,6 +36,23 @@ import com.example.aps.R
 fun AdminDashboard(navController: NavController) {
 
     var activeTab by remember { mutableStateOf("dashboard") }
+
+    // --- Retrofit + ViewModel --------------------------------
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+
+    val api = remember {
+        RetrofitClient.getClient { sessionManager.getAccessToken() }
+            .create(ApiService::class.java)
+    }
+
+    val viewModel: AdminDashboardViewModel = remember {
+        AdminDashboardViewModel(api)
+    }
+
+    val uiState: DashboardUiState by viewModel.state.collectAsState(
+        initial = DashboardUiState()
+    )
 
     Scaffold(
         bottomBar = {
@@ -56,11 +80,15 @@ fun AdminDashboard(navController: NavController) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Samer's Parking",
+                    text = if (uiState.parkingName.isNotBlank())
+                        uiState.parkingName
+                    else
+                        "Samer's Parking",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
+                    // still a static example date
                     "Sunday, September 28, 2025",
                     fontSize = 13.sp,
                     color = Color.Gray
@@ -78,14 +106,14 @@ fun AdminDashboard(navController: NavController) {
                 ) {
                     StatCard(
                         title = "Current Occupancy",
-                        value = "247/300",
-                        change = "+12 from yesterday",
+                        value = "${uiState.currentCapacity}/${uiState.maxCapacity}",
+                        change = "+12 from yesterday", // label still static
                         iconRes = R.drawable.ic_car,
                         modifier = Modifier.weight(1f)
                     )
                     StatCard(
                         title = "Active Reservations",
-                        value = "45",
+                        value = uiState.activeReservations.toString(),
                         change = "+5 today",
                         iconRes = R.drawable.ic_calendar,
                         modifier = Modifier.weight(1f)
@@ -98,14 +126,14 @@ fun AdminDashboard(navController: NavController) {
                 ) {
                     StatCard(
                         title = "Daily Revenue",
-                        value = "$2,450",
+                        value = String.format("$%.2f", uiState.todayRevenue),
                         change = "+8.5%",
                         iconRes = R.drawable.ic_revenue,
                         modifier = Modifier.weight(1f)
                     )
                     StatCard(
                         title = "Total Customers",
-                        value = "892",
+                        value = uiState.totalCustomers.toString(),
                         change = "+23 this week",
                         iconRes = R.drawable.ic_users,
                         modifier = Modifier.weight(1f)
@@ -131,7 +159,8 @@ fun AdminDashboard(navController: NavController) {
 
                     Spacer(Modifier.height(40.dp))
 
-                    OccupancyChart()
+                    // NOW DYNAMIC
+                    OccupancyChart(occupancyByHour = uiState.occupancyByHour)
                 }
             }
 
@@ -188,11 +217,23 @@ fun StatCard(
 }
 
 // ----------------------------------------------------------------------
-//  BAR CHART
+//  BAR CHART (dynamic from reservations)
 // ----------------------------------------------------------------------
 @Composable
-fun OccupancyChart() {
+fun OccupancyChart(occupancyByHour: List<Int>) {
     Column(Modifier.fillMaxWidth()) {
+
+        // time labels we use for 8 bars
+        val labels = listOf("6AM", "8AM", "10AM", "12PM", "2PM", "4PM", "6PM", "8PM")
+
+        // if ViewModel didn't send data yet, show flat placeholder
+        val values = if (occupancyByHour.isNotEmpty()) {
+            occupancyByHour
+        } else {
+            listOf(0, 0, 0, 0, 0, 0, 0, 0)
+        }
+
+        val maxVal = (values.maxOrNull() ?: 0).coerceAtLeast(1)
 
         Row(
             Modifier
@@ -201,10 +242,8 @@ fun OccupancyChart() {
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.Bottom
         ) {
-
-            val bars = listOf(0.55f, 0.48f, 0.31f, 0.14f, 0.02f, 0.11f, 0.28f, 0.55f)
-
-            bars.forEach { h ->
+            values.forEach { v ->
+                val h = v.toFloat() / maxVal // 0..1
                 Box(
                     modifier = Modifier
                         .width(20.dp)
@@ -217,7 +256,7 @@ fun OccupancyChart() {
         Spacer(Modifier.height(8.dp))
 
         Row(Modifier.fillMaxWidth(), Arrangement.SpaceEvenly) {
-            listOf("6AM", "8AM", "12PM", "2PM", "4PM", "6PM", "8PM").forEach {
+            labels.forEach {
                 Text(it, fontSize = 12.sp, color = Color.Gray)
             }
         }
@@ -225,7 +264,7 @@ fun OccupancyChart() {
 }
 
 // ----------------------------------------------------------------------
-//  IDENTICAL BOTTOM BAR (EXACT COPY OF ADMIN SETTINGS)
+//  BOTTOM BAR
 // ----------------------------------------------------------------------
 @Composable
 fun AdminDashboardBottomBar(
