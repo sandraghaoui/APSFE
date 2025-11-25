@@ -73,7 +73,8 @@ fun PurchaseHistoryScreen(navController: NavController) {
             val userUuid = peopleResp.body()!!.uuid
             Log.d(PURCHASE_HISTORY_TAG, "Resolved user UUID $userUuid")
 
-            val reservationsResp = api.listReservations(peopleUuid = userUuid)
+            val reservationsResp = api.listReservations()
+
             Log.d(
                 PURCHASE_HISTORY_TAG,
                 "listReservations success=${reservationsResp.isSuccessful} code=${reservationsResp.code()} size=${reservationsResp.body()?.size}"
