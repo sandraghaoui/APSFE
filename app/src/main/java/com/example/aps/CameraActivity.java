@@ -2,13 +2,9 @@ package com.example.aps;
 
 import ai.onnxruntime.OnnxTensor;
 import ai.onnxruntime.OrtEnvironment;
-import ai.onnxruntime.OrtException;
 import ai.onnxruntime.OrtSession;
-import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
@@ -28,8 +24,6 @@ import androidx.camera.view.PreviewView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.text.Text;
@@ -41,10 +35,18 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.FloatBuffer;
 import java.util.Collections;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class CameraActivity extends AppCompatActivity {
 
     private static final String TAG = "CameraActivity";
+
+    public static final String EXTRA_EXPECTED_PLATE = "expected_plate";
+    public static final String EXTRA_RESERVATION_ID = "reservation_id";
+    public static final String EXTRA_MODE = "mode";          // "checkin" or "checkout"
+    public static final String EXTRA_MATCHED = "matched";
 
     private static final int CAMERA_REQUEST_CODE = 100;
     private static final int INPUT_SIZE = 640;
@@ -56,6 +58,11 @@ public class CameraActivity extends AppCompatActivity {
     private OrtEnvironment ortEnv;
     private OrtSession ortSession;
 
+    // From intent
+    private String expectedPlate;
+    private int reservationId = -1;
+    private String mode = "checkin";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -64,6 +71,21 @@ public class CameraActivity extends AppCompatActivity {
         previewView = findViewById(R.id.previewView);
         cropPreview = findViewById(R.id.cropPreview);
         boxOverlay = findViewById(R.id.boxOverlay);
+
+        // ---- Read extras (plate + reservation + mode) ----
+        expectedPlate = getIntent().getStringExtra(EXTRA_EXPECTED_PLATE);
+        reservationId = getIntent().getIntExtra(EXTRA_RESERVATION_ID, -1);
+        String modeExtra = getIntent().getStringExtra(EXTRA_MODE);
+        if (modeExtra != null) modeExtra = modeExtra.toLowerCase(Locale.US);
+        mode = (modeExtra == null || modeExtra.isEmpty()) ? "checkin" : modeExtra;
+
+        if (expectedPlate != null) {
+            expectedPlate = expectedPlate.trim().toUpperCase(Locale.US);
+        }
+
+        Log.d(TAG, "EXPECTED_PLATE = " + expectedPlate +
+                ", reservationId = " + reservationId +
+                ", mode = " + mode);
 
         loadOnnxModel();
         requestCameraPermission();
@@ -99,6 +121,7 @@ public class CameraActivity extends AppCompatActivity {
         } else {
             Log.e(TAG, "Camera permission denied");
             Toast.makeText(this, "Camera permission required", Toast.LENGTH_SHORT).show();
+            finish();
         }
     }
 
@@ -123,7 +146,7 @@ public class CameraActivity extends AppCompatActivity {
             Log.d(TAG, "ONNX model loaded OK");
 
         } catch (Exception e) {
-            Log.e(TAG, "Failed to load ONNX model (Ask Gemini)", e);
+            Log.e(TAG, "Failed to load ONNX model", e);
             ortSession = null;
         }
     }
@@ -201,22 +224,18 @@ public class CameraActivity extends AppCompatActivity {
                 return;
             }
 
-            // The crop is created HERE → must stay in this scope
             Bitmap plateCrop = cropBitmap(bitmap, bestBox);
             if (plateCrop == null) return;
 
-            runOcr(plateCrop);
+            runOcrAndMaybeMatch(plateCrop);
 
-            // The UI update must stay inside this block
             runOnUiThread(() -> {
                 cropPreview.setImageBitmap(plateCrop);
-
                 Rect scaled = scaleRectToPreview(
                         bestBox,
                         bitmap.getWidth(),
                         bitmap.getHeight()
                 );
-
                 boxOverlay.setBox(scaled);
             });
 
@@ -225,10 +244,8 @@ public class CameraActivity extends AppCompatActivity {
         }
     }
 
-
     // ---------------- Scale Box ----------------
     private Rect scaleRectToPreview(Rect box, int imgW, int imgH) {
-        // Rotate 90 degrees clockwise
         int rotatedLeft   = box.top;
         int rotatedTop    = imgW - box.right;
         int rotatedRight  = box.bottom;
@@ -236,11 +253,10 @@ public class CameraActivity extends AppCompatActivity {
 
         Rect rotated = new Rect(rotatedLeft, rotatedTop, rotatedRight, rotatedBottom);
 
-        // Now scale to PreviewView size
         int viewW = previewView.getWidth();
         int viewH = previewView.getHeight();
 
-        float scaleX = viewW / (float) imgH; // note swapped!
+        float scaleX = viewW / (float) imgH;
         float scaleY = viewH / (float) imgW;
 
         int sx = (int) (rotated.left * scaleX);
@@ -250,8 +266,6 @@ public class CameraActivity extends AppCompatActivity {
 
         return new Rect(sx, sy, ex, ey);
     }
-
-
 
     // ---------------- ONNX INFERENCE ----------------
     private float[][] runYolo(Bitmap resized) {
@@ -287,12 +301,11 @@ public class CameraActivity extends AppCompatActivity {
                          Collections.singletonMap(inputName, tensor))) {
 
                 Object outObj = result.get(0).getValue();
-                // Model output: [1, 5, 8400]
                 float[][][] raw = (float[][][]) outObj;
                 float[][] feat = raw[0]; // [5][8400]
 
-                int channels = feat.length;      // should be 5
-                int numPreds = feat[0].length;   // should be 8400
+                int channels = feat.length;
+                int numPreds = feat[0].length;
 
                 float[][] preds = new float[numPreds][channels];
                 for (int c = 0; c < channels; c++) {
@@ -300,34 +313,30 @@ public class CameraActivity extends AppCompatActivity {
                         preds[i][c] = feat[c][i];
                     }
                 }
-
-                Log.d(TAG, "YOLO preds: " + numPreds + " boxes, channels=" + channels);
                 return preds;
             }
 
         } catch (Exception e) {
-            Log.e(TAG, "ONNX error (Ask Gemini)", e);
+            Log.e(TAG, "ONNX error", e);
             return null;
         }
     }
 
-    // ---------------- POSTPROCESSING: PICK BEST BOX ----------------
     // preds shape: [numPreds][5] = [cx, cy, w, h, conf]
     private Rect extractBestBox(float[][] preds, int imgW, int imgH) {
 
         float bestScore = 0f;
         Rect best = null;
 
-        for (int i = 0; i < preds.length; i++) {
-            float cx = preds[i][0];
-            float cy = preds[i][1];
-            float w  = preds[i][2];
-            float h  = preds[i][3];
-            float conf = preds[i][4];
+        for (float[] pred : preds) {
+            float cx = pred[0];
+            float cy = pred[1];
+            float w  = pred[2];
+            float h  = pred[3];
+            float conf = pred[4];
 
             if (conf < 0.4f) continue;
 
-            // YOLOv11 outputs are in absolute pixel units of the 640×640 input image
             float scaleX = (float) imgW / 640f;
             float scaleY = (float) imgH / 640f;
 
@@ -354,10 +363,8 @@ public class CameraActivity extends AppCompatActivity {
             }
         }
 
-        Log.d("YOLO", "Best score=" + bestScore + " box=" + best);
         return best;
     }
-
 
     private Bitmap cropBitmap(Bitmap source, Rect box) {
         try {
@@ -374,41 +381,75 @@ public class CameraActivity extends AppCompatActivity {
         }
     }
 
-    // ---------------- OCR ----------------
-    private void runOcr(Bitmap plateCrop) {
+    // ---------------- OCR + MATCH ----------------
+    private void runOcrAndMaybeMatch(Bitmap plateCrop) {
         TextRecognizer recognizer =
                 TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
 
         InputImage image = InputImage.fromBitmap(plateCrop, 0);
 
         recognizer.process(image)
-                .addOnSuccessListener(visionText -> {
-                    String raw = visionText.getText();
-                    Log.d("OCR", "Raw OCR text: " + raw);
-
-                    // Force valid plate: Letter + uninterrupted digits
-                    String plate = normalizePlateFormat(raw);
-                    Log.d("OCR", "Normalized plate: " + plate);
-
-                    if (plate == null || plate.isEmpty()) {
-                        // No valid plate in required format → ignore
-                        return;
-                    }
-
-                    // At this point, plate is ALWAYS like "B123456"
-                    Toast.makeText(getApplicationContext(), plate, Toast.LENGTH_SHORT).show();
-
-                    // If you want to extract letter/digits separately:
-                    // char letter = plate.charAt(0);
-                    // int number = Integer.parseInt(plate.substring(1));
-
-                })
-                .addOnFailureListener(e -> {
-                    Log.e("OCR", "Failed", e);
-                });
+                .addOnSuccessListener(this::handleOcrSuccess)
+                .addOnFailureListener(e -> Log.e("OCR", "Failed", e));
     }
 
+    private void handleOcrSuccess(Text visionText) {
+        String raw = visionText.getText();
+        Log.d("OCR", "Raw OCR text: " + raw);
 
+        String plate = normalizePlateFormat(raw);
+        Log.d("OCR", "Normalized plate: " + plate);
+
+        if (plate == null || plate.isEmpty()) {
+            return;
+        }
+
+        // Compare with expected plate
+        if (expectedPlate == null || expectedPlate.isEmpty()) {
+            return;
+        }
+
+        if (!plate.equalsIgnoreCase(expectedPlate)) {
+            return; // mismatch, ignore
+        }
+
+        // Match success → send result back
+        Intent data = new Intent();
+        data.putExtra(EXTRA_MATCHED, true);
+        data.putExtra(EXTRA_MODE, mode);
+        data.putExtra(EXTRA_RESERVATION_ID, reservationId);
+        setResult(RESULT_OK, data);
+        finish();
+    }
+
+    // Returns true if the string contains any Arabic-style digits
+    private boolean containsArabicDigits(String text) {
+        if (text == null) return false;
+
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c >= '\u0660' && c <= '\u0669') return true;
+            if (c >= '\u06F0' && c <= '\u06F9') return true;
+        }
+        return false;
+    }
+
+    private String normalizePlateFormat(String rawText) {
+        if (rawText == null) return null;
+
+        String upper = rawText.toUpperCase(Locale.US);
+        String cleaned = upper.replaceAll("[^A-Z0-9]", "");
+
+        Pattern pattern = Pattern.compile("([A-Z])(\\d+)");
+        Matcher matcher = pattern.matcher(cleaned);
+
+        if (matcher.find()) {
+            String letter = matcher.group(1);
+            String digits = matcher.group(2);
+            return letter + digits;
+        }
+        return null;
+    }
 
     @Override
     protected void onDestroy() {
@@ -418,49 +459,5 @@ public class CameraActivity extends AppCompatActivity {
             if (ortEnv != null) ortEnv.close();
         } catch (Exception ignored) {
         }
-    }
-    // Returns true if the string contains any Arabic-style digits
-    private boolean containsArabicDigits(String text) {
-        if (text == null) return false;
-
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-
-            // Arabic-Indic digits: ٠١٢٣٤٥٦٧٨٩
-            if (c >= '\u0660' && c <= '\u0669') {
-                return true;
-            }
-            // Eastern Arabic-Indic digits: ۰۱۲۳۴۵۶۷۸۹
-            if (c >= '\u06F0' && c <= '\u06F9') {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private String normalizePlateFormat(String rawText) {
-        if (rawText == null) return null;
-
-        // 1) Uppercase everything to simplify
-        String upper = rawText.toUpperCase(Locale.US);
-
-        // 2) Remove everything that is not A-Z or 0-9
-        //    This strips Arabic letters, punctuation, etc.
-        String cleaned = upper.replaceAll("[^A-Z0-9]", "");
-        // Now cleaned is something like "B1234", "ABC1234", "B١٢٣٤"->"B"
-
-        // 3) We only accept patterns: ONE letter + one or more digits
-        //    We scan the whole string looking for the first match
-        Pattern pattern = Pattern.compile("([A-Z])(\\d+)");
-        Matcher matcher = pattern.matcher(cleaned);
-
-        if (matcher.find()) {
-            String letter = matcher.group(1); // the A–Z
-            String digits = matcher.group(2); // the [0-9]+
-            return letter + digits;           // e.g. "B123456"
-        }
-
-        // No valid plate found
-        return null;
     }
 }
