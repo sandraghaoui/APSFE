@@ -175,7 +175,7 @@ fun ProfileScreen(navController: NavController) {
                 onClick = {
                     authViewModel.logout(context)
                     Toast.makeText(context, "Logged out successfully", Toast.LENGTH_SHORT).show()
-                    navController.navigate("login") {
+                    navController.navigate("home") {
                         popUpTo(0) { inclusive = true }
                     }
                 },
