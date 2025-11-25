@@ -204,7 +204,7 @@ fun BookingSuccessScreen(navController: NavHostController) {
 
         // Back to home
         Button(
-            onClick = { navController.navigate("home") },
+            onClick = { navController.navigate("user_dashboard") },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),

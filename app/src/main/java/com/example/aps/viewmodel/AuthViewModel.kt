@@ -247,6 +247,14 @@ class AuthViewModel : ViewModel() {
     }
 
     fun logout(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Clear Supabase session
+                SupabaseClientProvider.client.auth.signOut()
+            } catch (e: Exception) {
+                // Ignore errors during logout
+            }
+        }
         SessionManager(context).clearSession()
         context.getSharedPreferences("user_registration", Context.MODE_PRIVATE).edit().clear().apply()
     }

@@ -28,6 +28,8 @@ import com.example.aps.api.RetrofitClient
 import com.example.aps.api.SessionManager
 import com.example.aps.viewmodel.AdminDashboardViewModel
 import com.example.aps.viewmodel.DashboardUiState
+import java.text.SimpleDateFormat
+import java.util.*
 
 // ----------------------------------------------------------------------
 //  ADMIN DASHBOARD MAIN SCREEN
@@ -56,7 +58,7 @@ fun AdminDashboard(navController: NavController) {
 
     Scaffold(
         bottomBar = {
-            AdminDashboardBottomBar(
+            AdminBottomNavBar(
                 activeTab = activeTab,
                 navController = navController,
                 onTabChange = { activeTab = it }
@@ -83,13 +85,12 @@ fun AdminDashboard(navController: NavController) {
                     text = if (uiState.parkingName.isNotBlank())
                         uiState.parkingName
                     else
-                        "Samer's Parking",
+                        "Loading...",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    // still a static example date
-                    "Sunday, September 28, 2025",
+                    text = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault()).format(Date()),
                     fontSize = 13.sp,
                     color = Color.Gray
                 )
@@ -107,14 +108,16 @@ fun AdminDashboard(navController: NavController) {
                     StatCard(
                         title = "Current Occupancy",
                         value = "${uiState.currentCapacity}/${uiState.maxCapacity}",
-                        change = "+12 from yesterday", // label still static
+                        change = if (uiState.maxCapacity > 0) {
+                            "${((uiState.currentCapacity.toFloat() / uiState.maxCapacity) * 100).toInt()}% full"
+                        } else "N/A",
                         iconRes = R.drawable.ic_car,
                         modifier = Modifier.weight(1f)
                     )
                     StatCard(
                         title = "Active Reservations",
                         value = uiState.activeReservations.toString(),
-                        change = "+5 today",
+                        change = if (uiState.activeReservations > 0) "Active now" else "No active",
                         iconRes = R.drawable.ic_calendar,
                         modifier = Modifier.weight(1f)
                     )
@@ -127,14 +130,14 @@ fun AdminDashboard(navController: NavController) {
                     StatCard(
                         title = "Daily Revenue",
                         value = String.format("$%.2f", uiState.todayRevenue),
-                        change = "+8.5%",
+                        change = if (uiState.todayRevenue > 0) "Today" else "No revenue",
                         iconRes = R.drawable.ic_revenue,
                         modifier = Modifier.weight(1f)
                     )
                     StatCard(
                         title = "Total Customers",
                         value = uiState.totalCustomers.toString(),
-                        change = "+23 this week",
+                        change = if (uiState.totalCustomers > 0) "Registered" else "No customers",
                         iconRes = R.drawable.ic_users,
                         modifier = Modifier.weight(1f)
                     )
@@ -263,57 +266,4 @@ fun OccupancyChart(occupancyByHour: List<Int>) {
     }
 }
 
-// ----------------------------------------------------------------------
-//  BOTTOM BAR
-// ----------------------------------------------------------------------
-@Composable
-fun AdminDashboardBottomBar(
-    activeTab: String,
-    navController: NavController,
-    onTabChange: (String) -> Unit
-) {
-    val navItems = listOf(
-        Triple("dashboard", "Dashboard", Icons.Default.BarChart),
-        Triple("reservations", "Reservations", Icons.Default.AccessTime),
-        Triple("finances", "Finances", Icons.Default.CreditCard),
-        Triple("adjustments", "Adjustments", Icons.Default.Settings)
-    )
-
-    Surface(
-        tonalElevation = 3.dp,
-        shadowElevation = 3.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(vertical = 8.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            navItems.forEach { (key, label, icon) ->
-
-                val selected = key == activeTab
-                val color =
-                    if (selected) MaterialTheme.colorScheme.onSurface else Color.Gray
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clickable {
-                            onTabChange(key)
-                            when (key) {
-                                "dashboard" -> navController.navigate("admin")
-                                "reservations" -> navController.navigate("admin_reservations")
-                                "finances" -> navController.navigate("financial_reports")
-                                "adjustments" -> navController.navigate("admin_settings")
-                            }
-                        }
-                        .padding(4.dp)
-                ) {
-                    Icon(icon, label, tint = color, modifier = Modifier.size(22.dp))
-                    Text(label, color = color, fontSize = 12.sp)
-                }
-            }
-        }
-    }
-}
+// Old AdminDashboardBottomBar removed - using shared AdminBottomNavBar

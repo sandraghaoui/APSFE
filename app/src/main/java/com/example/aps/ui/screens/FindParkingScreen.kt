@@ -176,7 +176,7 @@ fun ParkingCard(
 @Composable
 fun FindParkingScreen(navController: NavController) {
 
-    val bottomBarHeight = 60.dp
+    val bottomBarHeight = 70.dp
 
     var selectedFilter by remember { mutableStateOf("Nearest") }
 
@@ -233,20 +233,38 @@ fun FindParkingScreen(navController: NavController) {
             Spacer(Modifier.height(40.dp))
         }
 
-        // Bottom Nav (same as before)
+        // Bottom Nav
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .height(bottomBarHeight)
                 .background(Color.White)
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+                .padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            BottomNavItem("Home", R.drawable.ic_nav_home, true) { navController.navigate("home") }
-            BottomNavItem("Payments", R.drawable.ic_nav_payments) { navController.navigate("purchase_history") }
-            BottomNavItem("Loyalty", R.drawable.ic_nav_loyalty) { navController.navigate("loyalty") }
-            BottomNavItem("Profile", R.drawable.ic_nav_profile) { navController.navigate("profile") }
+            BottomNavItem(
+                label = "Home",
+                imageRes = R.drawable.ic_nav_home,
+                selected = true,
+                onClick = { navController.navigate("user_dashboard") }
+            )
+            BottomNavItem(
+                label = "Payments",
+                imageRes = R.drawable.ic_nav_payments,
+                onClick = { navController.navigate("purchase_history") }
+            )
+            BottomNavItem(
+                label = "Loyalty",
+                imageRes = R.drawable.ic_nav_loyalty,
+                onClick = { navController.navigate("loyalty") }
+            )
+            BottomNavItem(
+                label = "Profile",
+                imageRes = R.drawable.ic_nav_profile,
+                onClick = { navController.navigate("profile") }
+            )
         }
     }
 }

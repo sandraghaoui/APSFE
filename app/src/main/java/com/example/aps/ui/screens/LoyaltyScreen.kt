@@ -40,14 +40,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.aps.R
 import com.example.aps.viewmodel.LoyaltyViewModel
-
 @Composable
 fun LoyaltyScreen(
     navController: NavController,
     viewModel: LoyaltyViewModel = viewModel()
 ) {
     val uiState by viewModel.state.collectAsState()
-    val bottomBarHeight = 60.dp
+    val bottomBarHeight = 70.dp
 
     when {
         uiState.isLoading -> {
@@ -265,13 +264,14 @@ fun LoyaltyScreen(
                 .fillMaxWidth()
                 .height(bottomBarHeight)
                 .background(Color.White)
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+                .padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             BottomNavItem(
                 label = "Home",
                 imageRes = R.drawable.ic_nav_home,
-                onClick = { navController.navigate("home") }
+                onClick = { navController.navigate("user_dashboard") }
             )
             BottomNavItem(
                 label = "Payments",
