@@ -26,7 +26,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -261,35 +260,6 @@ fun HomeScreen(navController: NavController) {
                 }
             }
         }
-
-
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(bottomBarHeight)
-                .background(Color.White)
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            BottomNavItem(
-                label = "Home",
-                imageRes = R.drawable.ic_nav_home,
-                selected = true
-            )
-            BottomNavItem(
-                label = "Payments",
-                imageRes = R.drawable.ic_nav_payments
-            )
-            BottomNavItem(
-                label = "Loyalty",
-                imageRes = R.drawable.ic_nav_loyalty
-            )
-            BottomNavItem(
-                label = "Profile",
-                imageRes = R.drawable.ic_nav_profile
-            )
-        }
     }
 }
 
@@ -328,28 +298,5 @@ fun FeatureCard(
                 textAlign = TextAlign.Center
             )
         }
-    }
-}
-
-@Composable
-fun BottomNavItem(
-    label: String,
-    imageRes: Int,
-    selected: Boolean = false
-) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Image(
-            painter = painterResource(id = imageRes),
-            contentDescription = label,
-            modifier = Modifier
-                .size(22.dp)
-                .alpha(if (selected) 1f else 0.5f)
-        )
-        Spacer(Modifier.height(2.dp))
-        Text(
-            text = label,
-            fontSize = 11.sp,
-            color = if (selected) Color(0xFF85BCA5) else Color.Gray
-        )
     }
 }
