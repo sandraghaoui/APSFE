@@ -22,10 +22,18 @@ import com.example.aps.R
 
 
 @Composable
-fun BookingSuccessScreen(navController: NavHostController) {
-
+fun BookingSuccessScreen(
+    navController: NavHostController,
+    parkingName: String,
+    parkingLocation: String,
+    duration: String,
+    loyaltyPoints: Int
+) {
     val GreenLight = Color(0xFF85BCA5)
     val GreenDark = Color(0xFF2F4A3F)
+    
+    val currentDateTime = java.time.LocalDateTime.now()
+    val formatter = java.time.format.DateTimeFormatter.ofPattern("MMMM d, yyyy 'at' h:mm a")
 
     Column(
         modifier = Modifier
@@ -104,7 +112,7 @@ fun BookingSuccessScreen(navController: NavHostController) {
 
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
-                        text = "+25",
+                        text = "+$loyaltyPoints",
                         color = Color.White,
                         fontSize = 42.sp,
                         fontWeight = FontWeight.Bold
@@ -161,7 +169,20 @@ fun BookingSuccessScreen(navController: NavHostController) {
                         tint = Color(0xFF85BCA5)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("1866 Parking Underground")
+                    Text(parkingName)
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_location),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = Color(0xFF85BCA5)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(parkingLocation, fontSize = 14.sp, color = Color(0xFF6B7280))
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -176,7 +197,7 @@ fun BookingSuccessScreen(navController: NavHostController) {
                         tint = Color(0xFF85BCA5)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("October 1, 2025 at 10:19 AM")
+                    Text(currentDateTime.format(formatter))
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -194,7 +215,7 @@ fun BookingSuccessScreen(navController: NavHostController) {
                             .background(Color(0xFFFFF2CC))
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
-                        Text("2 hours", color = Color(0xFFCC9300))
+                        Text(duration, color = Color(0xFFCC9300))
                     }
                 }
             }

@@ -1,6 +1,5 @@
 package com.example.aps.ui.screens
 
-import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,14 +10,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -27,16 +26,33 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.aps.CameraActivity
 import com.example.aps.R
+import com.example.aps.api.ParkingRead
+import com.example.aps.api.SessionManager
+import com.example.aps.viewmodel.ParkingViewModel
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 /**
  * UserDashboard - Main screen for regular users after login
- * Contains feature cards, parking options, and bottom navigation
+ * Shows available parking spots from DB with real-time data
  */
 @Composable
 fun UserDashboard(navController: NavController) {
+    val context = LocalContext.current
+    val sessionManager = SessionManager(context)
+    val viewModel: ParkingViewModel = viewModel(
+        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return ParkingViewModel(sessionManager) as T
+            }
+        }
+    )
+    
+    val uiState by viewModel.parkingState.collectAsState()
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
     val screenWidth = configuration.screenWidthDp.dp
@@ -45,13 +61,11 @@ fun UserDashboard(navController: NavController) {
     val greenTop = Color(0xFF354E44)
     val greenBottom = Color(0xFF263931)
     val bottomBarHeight = 70.dp
-
-    val context = LocalContext.current
     
     // Responsive dimensions
     val horizontalPadding = (screenWidth * 0.04f).coerceAtMost(16.dp).coerceAtLeast(12.dp)
     val verticalPadding = (screenHeight * 0.02f).coerceAtMost(24.dp).coerceAtLeast(16.dp)
-    val headerHeight = (screenHeight * 0.3f).coerceAtMost(260.dp).coerceAtLeast(180.dp)
+    val headerHeight = (screenHeight * 0.25f).coerceAtMost(200.dp).coerceAtLeast(160.dp)
 
     Box(
         modifier = Modifier
@@ -133,14 +147,14 @@ fun UserDashboard(navController: NavController) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Find Your Perfect Parking Spot",
-                    fontSize = (screenWidth.value * 0.045f).coerceIn(16f, 18f).sp,
-                    fontWeight = FontWeight.SemiBold,
+                    text = "Available Parking Spots",
+                    fontSize = (screenWidth.value * 0.05f).coerceIn(18f, 22f).sp,
+                    fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "Real-time availability, instant booking, and rewards",
+                    text = "Choose from ${uiState.parkings.size} available locations",
                     fontSize = (screenWidth.value * 0.032f).coerceIn(11f, 13f).sp,
                     color = Color.Gray,
                     textAlign = TextAlign.Center
@@ -149,90 +163,98 @@ fun UserDashboard(navController: NavController) {
 
             Spacer(Modifier.height(verticalPadding * 1.5f))
 
-            // ---------------- FEATURE CARDS ----------------
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = horizontalPadding),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                FeatureCard(
-                    title = "Real-Time\nUpdates",
-                    imageRes = R.drawable.ic_feature_realtime,
-                    modifier = Modifier.weight(1f),
-                    screenWidth = screenWidth
-                )
-                FeatureCard(
-                    title = "Secure\nParking",
-                    imageRes = R.drawable.ic_feature_secure,
-                    modifier = Modifier.weight(1f),
-                    screenWidth = screenWidth
-                )
-                FeatureCard(
-                    title = "Earn\nRewards",
-                    imageRes = R.drawable.ic_feature_rewards,
-                    modifier = Modifier.weight(1f),
-                    screenWidth = screenWidth
-                )
-            }
-
-            Spacer(Modifier.height(verticalPadding * 2.5f))
-
-            // ---------------- ACTION CARD ----------------
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = horizontalPadding, vertical = verticalPadding)
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(greenLight, greenBottom),
-                            start = Offset(0f, 0f),
-                            end = Offset(1000f, 1000f)
-                        )
-                    )
-                    .padding(horizontal = horizontalPadding * 1.5f, vertical = verticalPadding)
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Quick Actions",
-                        color = Color.White,
-                        fontSize = (screenWidth.value * 0.045f).coerceIn(16f, 18f).sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-
-                    Spacer(Modifier.height(4.dp))
-
-                    Text(
-                        text = "Find parking or scan your plate",
-                        color = Color(0xFFE5F4EF),
-                        fontSize = (screenWidth.value * 0.032f).coerceIn(11f, 13f).sp,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(Modifier.height(24.dp))
-
-                    Button(
-                        onClick = {
-                            val intent = Intent(context, CameraActivity::class.java)
-                            context.startActivity(intent)
-                        },
+            // ---------------- LOADING / ERROR / PARKING LIST ----------------
+            when {
+                uiState.isLoading -> {
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height((screenHeight * 0.06f).coerceAtMost(56.dp).coerceAtLeast(48.dp)),
-                        shape = RoundedCornerShape(50),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White,
-                            contentColor = greenBottom
-                        )
+                            .padding(vertical = 40.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            "Scan License Plate",
-                            fontSize = (screenWidth.value * 0.04f).coerceIn(14f, 16f).sp
-                        )
+                        CircularProgressIndicator(color = greenLight)
+                    }
+                }
+                uiState.error != null -> {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = horizontalPadding),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFEE2E2))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Error Loading Parkings",
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFDC2626)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = uiState.error ?: "Unknown error",
+                                fontSize = 13.sp,
+                                color = Color(0xFF991B1B)
+                            )
+                            Spacer(Modifier.height(16.dp))
+                            Button(
+                                onClick = { viewModel.loadParkings() },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
+                            ) {
+                                Text("Retry")
+                            }
+                        }
+                    }
+                }
+                uiState.parkings.isEmpty() -> {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = horizontalPadding),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(40.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "No Parking Spots Available",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = "Check back later for availability",
+                                fontSize = 13.sp,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                }
+                else -> {
+                    // Display parking cards
+                    Column(
+                        modifier = Modifier.padding(horizontal = horizontalPadding),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        uiState.parkings.forEach { parking ->
+                            ParkingCardItem(
+                                parking = parking,
+                                onClick = {
+                                    // Encode parking data for navigation
+                                    val encodedName = URLEncoder.encode(parking.name, StandardCharsets.UTF_8.toString())
+                                    val encodedLocation = URLEncoder.encode(parking.location, StandardCharsets.UTF_8.toString())
+                                    val encodedOpenTime = URLEncoder.encode(parking.open_time, StandardCharsets.UTF_8.toString())
+                                    val encodedCloseTime = URLEncoder.encode(parking.close_time, StandardCharsets.UTF_8.toString())
+                                    navController.navigate(
+                                        "confirm_booking?parkingName=$encodedName&location=$encodedLocation&pricePerHour=${parking.price_per_hour}&currentCapacity=${parking.current_capacity}&maxCapacity=${parking.maximum_capacity}&openTime=$encodedOpenTime&closeTime=$encodedCloseTime"
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -277,35 +299,132 @@ fun UserDashboard(navController: NavController) {
 }
 
 @Composable
-fun FeatureCard(
-    title: String,
-    imageRes: Int,
-    modifier: Modifier = Modifier,
-    screenWidth: androidx.compose.ui.unit.Dp
+fun ParkingCardItem(
+    parking: ParkingRead,
+    onClick: () -> Unit
 ) {
+    val availableSpots = parking.maximum_capacity - parking.current_capacity
+    val occupancyPercent = ((parking.current_capacity.toDouble() / parking.maximum_capacity) * 100).toInt()
+    val statusColor = if (availableSpots > 30) Color(0xFF22C55E) else Color(0xFFF59E0B)
+    val barColor = if (occupancyPercent < 70) Color(0xFF22C55E) else Color(0xFFF59E0B)
+    
     Card(
-        modifier = modifier.height((screenWidth.value * 0.35f).dp.coerceIn(100.dp, 140.dp)),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(8.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Image(
-                painter = painterResource(id = imageRes),
-                contentDescription = title,
-                modifier = Modifier.size((screenWidth.value * 0.14f).dp.coerceIn(40.dp, 56.dp))
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = title,
-                fontSize = (screenWidth.value * 0.032f).coerceIn(11f, 13f).sp,
-                textAlign = TextAlign.Center
-            )
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = parking.name,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1F2937)
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_location),
+                            contentDescription = null,
+                            tint = Color(0xFF6B7280),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = parking.location,
+                            fontSize = 13.sp,
+                            color = Color(0xFF6B7280)
+                        )
+                    }
+                    
+                    Spacer(Modifier.height(12.dp))
+                    
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "$${parking.price_per_hour}/hr",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF22C55E)
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Text(
+                            text = "$availableSpots spots left",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = statusColor
+                        )
+                    }
+                }
+                
+                // Status badge
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(statusColor.copy(alpha = 0.15f))
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = if (availableSpots > 30) "Available" else "Limited",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = statusColor
+                    )
+                }
+            }
+            
+            Spacer(Modifier.height(12.dp))
+            
+            // Occupancy bar
+            Column {
+                Text(
+                    text = "Occupancy: $occupancyPercent%",
+                    fontSize = 12.sp,
+                    color = Color(0xFF6B7280)
+                )
+                Spacer(Modifier.height(6.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xFFE5E7EB))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(occupancyPercent / 100f)
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(barColor)
+                    )
+                }
+            }
+            
+            Spacer(Modifier.height(16.dp))
+            
+            Button(
+                onClick = onClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF85BCA5))
+            ) {
+                Text(
+                    text = "Book Now",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
         }
     }
 }
