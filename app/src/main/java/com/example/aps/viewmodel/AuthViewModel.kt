@@ -14,8 +14,8 @@ import kotlinx.coroutines.withContext
 class AuthViewModel : ViewModel() {
 
     // ============================================================
-// REGISTER USER - SIMPLIFIED
-// ============================================================
+    // REGISTER USER - ORIGINAL
+    // ============================================================
     fun registerUser(
         context: Context,
         fullName: String,
@@ -71,8 +71,8 @@ class AuthViewModel : ViewModel() {
     }
 
     // ============================================================
-// LOGIN USER - CORRECTED
-// ============================================================
+    // LOGIN USER - ROLLED BACK + SMALL FIX
+    // ============================================================
     fun loginUser(
         context: Context,
         email: String,
@@ -119,12 +119,61 @@ class AuthViewModel : ViewModel() {
                 val api = RetrofitClient.getClient { sessionManager.getAccessToken() }
                     .create(ApiService::class.java)
 
-                // 3) Check if this is first login
+                // 3) Check profile_created flag in SharedPreferences
                 val userPrefs = context.getSharedPreferences("user_registration", Context.MODE_PRIVATE)
-                val profileCreated = userPrefs.getBoolean("profile_created", false)
+                var profileCreated = userPrefs.getBoolean("profile_created", false)
 
-                Log.e("LOGIN_DEBUG", "Profile created flag: $profileCreated")
+                Log.e("LOGIN_DEBUG", "Profile created flag (before server check): $profileCreated")
 
+                // ------------------------------------------------------------
+                // A) If profileCreated == false, first check if backend profile
+                //    already exists. If yes, mark flag true and skip bootstrap.
+                // ------------------------------------------------------------
+                if (!profileCreated) {
+                    Log.e("LOGIN_DEBUG", "Checking /users/me on server...")
+
+                    try {
+                        val existingProfileResp = api.getMyProfile()
+
+                        if (existingProfileResp.isSuccessful && existingProfileResp.body() != null) {
+                            val user = existingProfileResp.body()!!
+                            val isAdmin = user.admin
+
+                            // Backend already has profile -> mark as created locally
+                            userPrefs.edit().putBoolean("profile_created", true).apply()
+                            profileCreated = true
+
+                            Log.e("LOGIN_DEBUG", "Profile already exists on server. Skipping first-login bootstrap.")
+                            Log.e("LOGIN_DEBUG", "User: ${user.first_name} ${user.last_name}")
+                            Log.e("LOGIN_DEBUG", "Admin: $isAdmin")
+                            Log.e("LOGIN_DEBUG", "========================================")
+
+                            withContext(Dispatchers.Main) {
+                                onSuccess(isAdmin)
+                            }
+                            return@launch
+                        } else if (!existingProfileResp.isSuccessful && existingProfileResp.code() != 404) {
+                            // Some other server error
+                            Log.e("LOGIN_DEBUG", "Error checking profile: ${existingProfileResp.code()}")
+                            withContext(Dispatchers.Main) {
+                                onError("Failed to load profile: ${existingProfileResp.code()}")
+                            }
+                            return@launch
+                        }
+
+                        // If 404 → no profile on backend. We'll fall through to original
+                        // first-login bootstrap using pending registration data.
+                        Log.e("LOGIN_DEBUG", "No existing profile on server (404). Will run first-login bootstrap.")
+
+                    } catch (e: Exception) {
+                        Log.e("LOGIN_DEBUG", "Exception while checking existing profile: ${e.message}")
+                        // If this fails, we fall back to original behavior
+                    }
+                }
+
+                // ------------------------------------------------------------
+                // B) ORIGINAL FIRST-LOGIN FLOW (only if profileCreated==false)
+                // ------------------------------------------------------------
                 if (!profileCreated) {
                     Log.e("LOGIN_DEBUG", "=== FIRST LOGIN - CREATING PROFILES ===")
 
@@ -134,7 +183,10 @@ class AuthViewModel : ViewModel() {
                     val pendingPlate = userPrefs.getString("pending_plate", "0") ?: "0"
                     val pendingEmail = userPrefs.getString("pending_email", "") ?: userEmail
 
-                    Log.e("LOGIN_DEBUG", "Pending data: Name='$pendingName', Phone='$pendingPhone', Plate='$pendingPlate'")
+                    Log.e(
+                        "LOGIN_DEBUG",
+                        "Pending data: Name='$pendingName', Phone='$pendingPhone', Plate='$pendingPlate'"
+                    )
 
                     if (pendingName.isEmpty()) {
                         Log.e("LOGIN_DEBUG", "ERROR: No pending registration data found")
@@ -237,7 +289,9 @@ class AuthViewModel : ViewModel() {
                     Log.e("LOGIN_DEBUG", "✓ Profile created flag set to true")
                 }
 
-                // 4) Fetch user profile to check admin status
+                // ------------------------------------------------------------
+                // C) STANDARD FLOW: fetch profile, return isAdmin
+                // ------------------------------------------------------------
                 Log.e("LOGIN_DEBUG", "Fetching user profile for admin check...")
 
                 val userResp = api.getMyProfile()
@@ -257,7 +311,6 @@ class AuthViewModel : ViewModel() {
                 Log.e("LOGIN_DEBUG", "Admin: $isAdmin")
                 Log.e("LOGIN_DEBUG", "========================================")
 
-                // 5) SUCCESS
                 withContext(Dispatchers.Main) {
                     onSuccess(isAdmin)
                 }
@@ -272,10 +325,8 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-
-
     // ============================================================
-    // PROFILE FETCH
+    // PROFILE FETCH - ORIGINAL
     // ============================================================
     fun getUserProfile(
         context: Context,
@@ -312,6 +363,9 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    // ============================================================
+    // LOGOUT - ORIGINAL
+    // ============================================================
     fun logout(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             try {

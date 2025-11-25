@@ -36,8 +36,6 @@ import java.io.InputStream;
 import java.nio.FloatBuffer;
 import java.util.Collections;
 import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class CameraActivity extends AppCompatActivity {
 
@@ -66,7 +64,7 @@ public class CameraActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_camera);
+        setContentView(R.layout.activity_camera); // keep your existing layout / composable host
 
         previewView = findViewById(R.id.previewView);
         cropPreview = findViewById(R.id.cropPreview);
@@ -80,10 +78,12 @@ public class CameraActivity extends AppCompatActivity {
         mode = (modeExtra == null || modeExtra.isEmpty()) ? "checkin" : modeExtra;
 
         if (expectedPlate != null) {
+            // Normalize expected plate: trim, uppercase, then keep only digits
             expectedPlate = expectedPlate.trim().toUpperCase(Locale.US);
+            expectedPlate = expectedPlate.replaceAll("[^0-9]", "");
         }
 
-        Log.d(TAG, "EXPECTED_PLATE = " + expectedPlate +
+        Log.d(TAG, "EXPECTED_PLATE (digits only) = " + expectedPlate +
                 ", reservationId = " + reservationId +
                 ", mode = " + mode);
 
@@ -398,22 +398,31 @@ public class CameraActivity extends AppCompatActivity {
         Log.d("OCR", "Raw OCR text: " + raw);
 
         String plate = normalizePlateFormat(raw);
-        Log.d("OCR", "Normalized plate: " + plate);
+        Log.d("OCR", "Normalized plate (digits only): " + plate);
 
         if (plate == null || plate.isEmpty()) {
             return;
         }
 
-        // Compare with expected plate
+        // --- Splash on screen with the recognized plate (digits only) ---
+        runOnUiThread(() ->
+                Toast.makeText(this, "Plate: " + plate, Toast.LENGTH_SHORT).show()
+        );
+
+        // If we have no expected plate, we just display and stop
         if (expectedPlate == null || expectedPlate.isEmpty()) {
             return;
         }
 
+        // Compare digits-only vs digits-only
         if (!plate.equalsIgnoreCase(expectedPlate)) {
+            Log.d("OCR", "Plate mismatch: expected=" + expectedPlate + ", got=" + plate);
             return; // mismatch, ignore
         }
 
         // Match success → send result back
+        Log.d("OCR", "Plate matched! " + plate);
+
         Intent data = new Intent();
         data.putExtra(EXTRA_MATCHED, true);
         data.putExtra(EXTRA_MODE, mode);
@@ -421,34 +430,38 @@ public class CameraActivity extends AppCompatActivity {
         setResult(RESULT_OK, data);
         finish();
     }
-
-    // Returns true if the string contains any Arabic-style digits
-    private boolean containsArabicDigits(String text) {
-        if (text == null) return false;
-
+    private String convertArabicDigits(String text) {
+        if (text == null) return null;
+        StringBuilder sb = new StringBuilder(text.length());
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
-            if (c >= '\u0660' && c <= '\u0669') return true;
-            if (c >= '\u06F0' && c <= '\u06F9') return true;
+            if (c >= '\u0660' && c <= '\u0669') {
+                // Arabic-Indic digits
+                c = (char) ('0' + (c - '\u0660'));
+            } else if (c >= '\u06F0' && c <= '\u06F9') {
+                // Extended Arabic-Indic digits
+                c = (char) ('0' + (c - '\u06F0'));
+            }
+            sb.append(c);
         }
-        return false;
+        return sb.toString();
     }
 
     private String normalizePlateFormat(String rawText) {
         if (rawText == null) return null;
 
         String upper = rawText.toUpperCase(Locale.US);
-        String cleaned = upper.replaceAll("[^A-Z0-9]", "");
+        String western = convertArabicDigits(upper);
 
-        Pattern pattern = Pattern.compile("([A-Z])(\\d+)");
-        Matcher matcher = pattern.matcher(cleaned);
+        // Keep only digits
+        String digitsOnly = western.replaceAll("[^0-9]", "");
 
-        if (matcher.find()) {
-            String letter = matcher.group(1);
-            String digits = matcher.group(2);
-            return letter + digits;
+        // Optional: ignore very short noise
+        if (digitsOnly.length() < 3) {
+            return null;
         }
-        return null;
+
+        return digitsOnly;  // ONLY numbers
     }
 
     @Override
