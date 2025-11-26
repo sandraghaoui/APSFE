@@ -131,7 +131,7 @@ fun AdminDashboard(navController: NavController) {
                         title = "Daily Revenue",
                         value = String.format("$%.2f", uiState.todayRevenue),
                         change = if (uiState.todayRevenue > 0) "Today" else "No revenue",
-                        iconRes = R.drawable.ic_revenue,
+                        iconRes = R.drawable.ic_dollar,
                         modifier = Modifier.weight(1f)
                     )
                     StatCard(

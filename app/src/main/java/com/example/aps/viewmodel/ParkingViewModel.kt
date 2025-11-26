@@ -90,7 +90,7 @@ class ParkingViewModel(private val sessionManager: SessionManager) : ViewModel()
                 val body = ReservationCreate(
                     parking_id = parkingId,
                     time = time,
-                    status = "Confirmed",
+                    status = "pending",
                     checkout_time = checkoutTime,
                     price = price
                 )

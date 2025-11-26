@@ -87,7 +87,7 @@ class AdminDashboardViewModel(
                     parkingReservations =
                         filterReservationsForParking(allReservations, parkingName)
 
-                    val active = parkingReservations.count { it.status == "Pending" }
+                    val active = parkingReservations.count { it.status == "pending" }
                     _state.value = _state.value.copy(
                         activeReservations = active
                     )
